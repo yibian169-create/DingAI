@@ -17,9 +17,10 @@ final class DB
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
                 // 连接初始化时强制设置客户端连接字符集为 utf8mb4（解决 1366 错误）
-                // dsn 的 charset=utf8mb4 在 MySQL 5.7- 上不生效，必须靠 init_command 显式 SET NAMES
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
             ]);
+            // 兜底：连接后立即显式 SET NAMES（不依赖 PDO 驱动解析 init_command）
+            try { self::$pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"); } catch (Throwable $e) {}
         }
         return self::$pdo;
     }
