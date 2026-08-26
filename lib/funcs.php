@@ -253,6 +253,10 @@ function current_city(): ?array
     }
     $city = trim($_GET['city'] ?? '');
     if ($city === '') {
+        // 分站上下文（cookie）：分站内打开文章详情等无 city 参数的页面也能保持城市
+        $city = trim((string)($_COOKIE['dy_city'] ?? ''));
+    }
+    if ($city === '') {
         return null;
     }
     $sid = current_site_id();

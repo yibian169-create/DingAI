@@ -22,6 +22,12 @@ geo_monitor_maybe_run(); // 网页伪 Cron：启用后每日自动对若干文�
 $act  = $_GET['act'] ?? 'home';
 $sid  = current_site_id();
 $city = current_city(); // 分站开启且 ?city= 有效时返回分站配置
+// 记住当前分站城市（30 天）：分站内打开文章详情等无 city 参数的页面也能保持城市上下文，标题自动带城市名
+if ($city && !empty($city['pinyin'])) {
+    setcookie('dy_city', (string)$city['pinyin'], time() + 86400 * 30, '/', '', false, true);
+} elseif ($city && !empty($city['city'])) {
+    setcookie('dy_city', (string)$city['city'], time() + 86400 * 30, '/', '', false, true);
+}
 
 /* 全站 SEO 兜底（分站可覆盖） */
 $cityArr    = $city ?: ['keywords' => '', 'description' => '', 'title_suffix' => '', 'city' => ''];
