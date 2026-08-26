@@ -109,7 +109,20 @@
       <!-- 右侧：分站列表 -->
       <div class="split-list">
         <div class="panel">
-          <h2>分站列表（<?= count($list) ?> 个城市）</h2>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <h2 style="margin:0">分站列表（<?= count($list) ?> 个城市）</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <form method="post" action="admin.php?m=city_clear_tdk" style="display:inline" onsubmit="return confirm('确定清空所有 <?= count($list) ?> 个分站的 SEO 字段？\n\n【清 SEO 按钮说明】\n✓ 清空：标题后缀 / 关键词 / 描述\n✓ 保留：城市本身（可重新跑模板或 AI 生成 SEO）\n✗ 不影响：分站开关、城市列表、栏目\n\n继续？')">
+                <input type="hidden" name="confirm" value="1">
+                <button type="submit" class="btn btn-s" style="background:#f59e0b;color:#fff;border:none">🧹 清 SEO 字段</button>
+              <?= csrf_field() ?>
+</form>
+              <form method="post" action="admin.php?m=city_clear_all" style="display:inline" onsubmit="var n=<?= count($list) ?>;return confirm('⚠️ 高危操作：将彻底删除全部 ' + n + ' 个分站，不可恢复！\n\n【全删按钮说明】\n✗ 删除：所有城市分站（含 SEO 字段）\n✓ 保留：分站开关状态\n▶ 建议：删完立刻「一键导入全国分站」重建\n\n确认要删？')">
+                <button type="submit" class="btn btn-s btn-d">🗑️ 全删分站</button>
+              <?= csrf_field() ?>
+</form>
+            </div>
+          </div>
           <table>
             <thead><tr><th>ID</th><th>城市</th><th>拼音后缀</th><th>标题后缀</th><th>状态</th><th>前台链接</th><th>操作</th></tr></thead>
             <tbody>

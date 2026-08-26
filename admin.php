@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_plan_run', 'city_notice', 'city_save', 'city_del',
+    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_plan_run', 'city_notice', 'city_save', 'city_del', 'city_clear_tdk', 'city_clear_all',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -1160,6 +1160,20 @@ if ($m === 'city_save') {
 if ($m === 'city_del') {
     DB::run('DELETE FROM city_sites WHERE id=? AND site_id=?', [(int)($_POST['id'] ?? 0), $sid]);
     redirect('admin.php?m=citysites', '分站已删除');
+}
+if ($m === 'city_clear_tdk') {
+    require_admin();
+    // 清空所有分站的 SEO 字段（标题/关键词/描述），城市本身保留 —— 用于覆盖新代码后旧数据无法被新逻辑重写
+    $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
+    DB::run('UPDATE city_sites SET title_suffix=?, keywords=?, description=? WHERE site_id=?', ['', '', '', $sid]);
+    redirect('admin.php?m=citysites', "已清空 {$n} 个分站的 SEO 字段（城市保留），可立刻重新跑模板版/AI 版生成");
+}
+if ($m === 'city_clear_all') {
+    require_admin();
+    // 彻底删除所有分站（兜底，谨慎）
+    $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
+    DB::run('DELETE FROM city_sites WHERE site_id=?', [$sid]);
+    redirect('admin.php?m=citysites', "已彻底删除 {$n} 个分站，请重新「一键导入全国分站」");
 }
 if ($m === 'city_notice') {
     require_admin();
