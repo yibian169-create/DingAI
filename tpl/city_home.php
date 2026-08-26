@@ -15,10 +15,18 @@
     </div>
 </section>
 
-<!-- ============ 分站公告（后台「全国分站」可配置，清空则不显示） ============ -->
-<?php $cityNotice = trim((string)($settings['city_notice'] ?? '')); ?>
+<!-- ============ 顶部品牌横幅（自动取自 settings.site_name，永远显示 · 比公告更有用） ============ -->
+<?php
+$brandBanner = trim((string)($settings['site_name'] ?? ''));
+if ($brandBanner === '') { $brandBanner = '得应盯'; }
+$cityNotice   = trim((string)($settings['city_notice'] ?? ''));
+?>
+<div style="background:linear-gradient(115deg,#4f46e5,#7c83ff);color:#fff;text-align:center;padding:11px 16px;font-size:14px;font-weight:700;line-height:1.5;letter-spacing:.5px">
+    🏷️ <?= e($brandBanner) ?> · 全国 <?= e($city['city'] ?? '') ?>本地服务 · <a href="tel:<?= e(!empty($S['phone']) ? $S['phone'] : '') ?>" style="color:#fff;text-decoration:underline"><?= e(!empty($S['phone']) ? $S['phone'] : '400-000-0000') ?></a>
+</div>
+<?php /* 公告降级为可选 hint，没人看默认隐藏 */ ?>
 <?php if ($cityNotice !== ''): ?>
-<div style="background:linear-gradient(115deg,#fde68a,#fbbf24);color:#451a03;text-align:center;padding:9px 16px;font-size:13px;font-weight:600;line-height:1.6">📢 <?= e($cityNotice) ?></div>
+<div style="background:rgba(245,158,11,.08);color:#92400e;text-align:center;padding:6px 16px;font-size:12px;font-weight:500;line-height:1.5;border-top:1px solid rgba(245,158,11,.2)"><?= e($cityNotice) ?></div>
 <?php endif; ?>
 
 <!-- ============ 本地服务 + 城市内容聚合 ============ -->
