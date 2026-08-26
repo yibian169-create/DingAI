@@ -317,6 +317,41 @@ function city_pinyin(string $city): string
     return '';
 }
 
+/** 一键生成全国分站独立 SEO（模板化填充空的 title_suffix/keywords/description，保证每城独立可收录） */
+function city_tdk_auto(string $industry = '网站建设'): array
+{
+    $sid = current_site_id();
+    $industry = trim($industry);
+    if ($industry === '') {
+        $industry = '网站建设';
+    }
+    $rows = DB::all('SELECT * FROM city_sites WHERE site_id=?', [$sid]);
+    $updated = 0;
+    foreach ($rows as $c) {
+        $titleSuffix = trim((string)$c['title_suffix']);
+        $keywords    = trim((string)$c['keywords']);
+        $description = trim((string)$c['description']);
+        $need = false;
+        if ($titleSuffix === '') {
+            $titleSuffix = '- ' . $c['city'] . $industry;
+            $need = true;
+        }
+        if ($keywords === '') {
+            $keywords = $c['city'] . $industry . ',' . $c['city'] . '网站制作,' . $c['city'] . '建站公司,' . $c['city'] . '网站设计,' . $c['city'] . $industry . '公司';
+            $need = true;
+        }
+        if ($description === '') {
+            $description = $c['city'] . $industry . '服务商——专注' . $c['city'] . $industry . '、' . $c['city'] . '网站制作、' . $c['city'] . 'SEO优化，本地化一对一服务，欢迎咨询。';
+            $need = true;
+        }
+        if ($need) {
+            DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=? WHERE id=? AND site_id=?', [$titleSuffix, $keywords, $description, $c['id'], $sid]);
+            $updated++;
+        }
+    }
+    return ['total' => count($rows), 'updated' => $updated];
+}
+
 /** 主题配色（盘企 ui.json 同款 4 套方案 + 自定义） */
 function get_theme_colors(string $theme): array
 {

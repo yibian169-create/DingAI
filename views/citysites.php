@@ -45,6 +45,27 @@
         </div>
 
         <div class="panel">
+          <h2>一键生成全部分站 SEO</h2>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">为尚未填写 SEO 的分站自动生成<strong>独立标题/关键词/描述</strong>（每城不同，百度收录必需）。已填写的分站保持不变。</p>
+          <form method="post" action="admin.php?m=city_tdk_all" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="text" name="industry" value="网站建设" style="flex:1;min-width:180px" placeholder="行业词，如：网站建设 / SEO优化">
+            <button class="btn btn-p" type="submit">生成全部分站 SEO</button>
+          <?= csrf_field() ?>
+</form>
+        </div>
+
+        <div class="panel">
+          <h2>全国分站内容批量生成（AI 逐城发文）</h2>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">AI 为每个城市生成一篇「城市+行业」专属文章（标题/正文含城市名，自动发布到「自动发文计划」所选栏目）。<strong>每城约 20~60 秒</strong>，可随时中断，已生成的自动跳过。</p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <input type="text" id="cpIndustry" value="网站建设" style="flex:1;min-width:150px" placeholder="行业词">
+            <input type="number" id="cpMax" value="50" min="1" max="300" style="width:90px" placeholder="上限">
+            <button class="btn btn-p" id="cpBtn" onclick="cityPlanRun()">🚀 开始批量生成</button>
+          </div>
+          <div class="note" id="cpStatus" style="display:none;margin-top:4px;font-size:12.5px;line-height:1.7;max-height:150px;overflow:auto"></div>
+        </div>
+
+        <div class="panel">
           <h2>新增 / 编辑分站</h2>
           <form method="post" action="admin.php?m=city_save">
             <input type="hidden" name="id" id="f_id" value="0">
@@ -97,6 +118,10 @@
   </div>
 </div>
 <script>
+var CSRF = <?= json_encode(csrf_token()) ?>;
+var ALL_CITIES = <?= json_encode(array_values(array_filter(array_map(function ($c) {
+    return ['id' => (int)$c['id'], 'city' => (string)$c['city'], 'status' => (int)$c['status']];
+}, $list), function ($c) { return $c['status'] === 1; }))) ?>;
 function edit(c) {
   document.getElementById('f_id').value = c.id;
   document.getElementById('f_city').value = c.city;
@@ -105,6 +130,49 @@ function edit(c) {
   document.getElementById('f_kw').value = c.keywords || '';
   document.getElementById('f_desc').value = c.description || '';
   document.getElementById('f_status').value = c.status;
+}
+/* ---------- 全国分站内容批量生成（AI 逐城发文，串行防超时） ---------- */
+function cityPlanRun() {
+  var industry = (document.getElementById('cpIndustry').value || '').trim() || '网站建设';
+  var max = parseInt(document.getElementById('cpMax').value) || 50;
+  var btn = document.getElementById('cpBtn');
+  var st = document.getElementById('cpStatus');
+  if (!btn || !st) { return; }
+  if (!ALL_CITIES.length) { alert('请先「一键导入全国分站」'); return; }
+  if (!confirm('将为最多 ' + max + ' 个城市各生成一篇「城市+' + industry + '」文章（每篇约 20~60 秒），继续？')) return;
+  btn.disabled = true;
+  st.style.display = 'block';
+  var i = 0, done = 0, okN = 0, skipN = 0, failN = 0;
+  function finish(msg) {
+    st.textContent = msg;
+    btn.disabled = false;
+  }
+  (function next() {
+    if (i >= ALL_CITIES.length || done >= max) {
+      finish('🎉 本批完成：成功 ' + okN + '，跳过 ' + skipN + '，失败 ' + failN + '。可再次点击继续生成剩余城市。');
+      return;
+    }
+    var c = ALL_CITIES[i++];
+    st.textContent = '⏳ [' + i + '/' + ALL_CITIES.length + '] 正在为《' + c.city + industry + '》生成…（每篇约 20~60 秒，请勿关闭页面）';
+    var fd = new FormData();
+    fd.append('city_id', c.id);
+    fd.append('industry', industry);
+    fd.append('csrf', CSRF);
+    fetch('admin.php?m=city_plan_run', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        done++;
+        if (r.ok) { okN++; st.textContent = '✅ [' + i + '/' + ALL_CITIES.length + '] ' + c.city + '：' + (r.msg || '完成'); }
+        else if (r.dup) { skipN++; st.textContent = '⏭ [' + i + '/' + ALL_CITIES.length + '] ' + c.city + ' 已存在相关文章，跳过'; }
+        else { failN++; st.textContent = '⚠ [' + i + '/' + ALL_CITIES.length + '] ' + c.city + ' 失败：' + (r.msg || '未知原因'); }
+        next();
+      })
+      .catch(function (e) {
+        done++; failN++;
+        st.textContent = '⚠ [' + i + '/' + ALL_CITIES.length + '] ' + c.city + ' 请求失败：' + e.message + '（可再次点击从失败城市继续）';
+        next();
+      });
+  })();
 }
 </script>
 </body>

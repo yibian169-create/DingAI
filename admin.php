@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_save', 'city_del',
+    'city_enable', 'city_import', 'city_tdk_all', 'city_plan_run', 'city_save', 'city_del',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -1051,6 +1051,49 @@ if ($m === 'city_enable') {
 if ($m === 'city_import') {
     $added = import_national_cities();
     redirect('admin.php?m=citysites', "导入完成，新增 {$added} 个城市分站");
+}
+if ($m === 'city_tdk_all') {
+    require_admin();
+    $industry = trim((string)($_POST['industry'] ?? '网站建设'));
+    $r = city_tdk_auto($industry);
+    redirect('admin.php?m=citysites', "已为 {$r['updated']} 个分站生成独立 SEO（共 {$r['total']} 城）");
+}
+if ($m === 'city_plan_run') {
+    require_admin();
+    if (function_exists('ob_start')) { @ob_start(); }
+    header('Content-Type: application/json; charset=utf-8');
+    $cityId   = (int)($_POST['city_id'] ?? 0);
+    $industry = trim((string)($_POST['industry'] ?? '网站建设'));
+    if ($industry === '') { $industry = '网站建设'; }
+    $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=? AND status=1', [$cityId, $sid]);
+    if (!$city) {
+        echo json_encode(['ok' => false, 'msg' => '城市不存在或已停用']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    $dup = DB::one('SELECT COUNT(*) AS n FROM articles WHERE site_id=? AND title LIKE ?', [$sid, '%' . $city['city'] . $industry . '%']);
+    if ((int)$dup['n'] > 0) {
+        echo json_encode(['ok' => false, 'dup' => true, 'msg' => $city['city'] . ' 已有相关文章，跳过']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    $topic = $city['city'] . $industry;
+    $r = ai_build_article($topic, 1200, '亲切实战', $city['city'] . '本地化服务', false, true, false);
+    if (!$r['ok']) {
+        echo json_encode(['ok' => false, 'msg' => '生成失败：' . $r['msg']]);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    $catId   = (int)setting('ai_plan_cat', 0);
+    $summary = mb_substr(strip_tags($r['content']), 0, 80);
+    DB::insert('INSERT INTO articles(site_id,cat_id,title,summary,cover,content,tags,recommend,status,seo_title,seo_keywords,seo_description,geo_summary,geo_faq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [$sid, $catId, $r['title'], $summary, $r['cover'], $r['content'], $topic, 0, 1,
+         $r['seo_title'] ?? '', $r['seo_keywords'] ?? '', $r['seo_description'] ?? '',
+         $r['geo_summary'] ?? '', $r['geo_faq'] ?? '']);
+    DB::run('INSERT INTO ai_post_log(site_id,keyword,model,has_image) VALUES(?,?,?,?)', [$sid, $topic, setting('ai_model', 'deepseek-chat'), $r['img_count'] > 0 ? 1 : 0]);
+    echo json_encode(['ok' => true, 'msg' => '已生成《' . $r['title'] . '》', 'title' => $r['title']]);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+    exit;
 }
 if ($m === 'city_save') {
     $id = (int)($_POST['id'] ?? 0);

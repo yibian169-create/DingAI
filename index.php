@@ -19,9 +19,9 @@ maybe_auto_post(); // 网页伪 Cron：到点自动 AI 写文并发布（无需�
 ai_img_queue_pick_one(); // 网页伪 Cron：每次前台访问处理 1 篇配图队列任务（兜底，无宝塔计划任务也能跑）
 geo_monitor_maybe_run(); // 网页伪 Cron：启用后每日自动对若干文章跑 GEO 探针（检测是否被 AI 引用）
 
-$act  = $_GET['act'] ?? 'home';
-$sid  = current_site_id();
 $city = current_city(); // 分站开启且 ?city= 有效时返回分站配置
+$act  = $_GET['act'] ?? ($city ? 'city_home' : 'home'); // 带城市参数时默认进城市专属首页
+$sid  = current_site_id();
 // 记住当前分站城市（30 天）：分站内打开文章详情等无 city 参数的页面也能保持城市上下文，标题自动带城市名
 if ($city && !empty($city['pinyin'])) {
     setcookie('dy_city', (string)$city['pinyin'], time() + 86400 * 30, '/', '', false, true);
@@ -501,6 +501,66 @@ if ($act === 'detail') {
         'rel' => $rel, 'tags' => $tags, 'newsFoot' => $newsFoot,
         'aboutUrl' => $aboutUrl, 'contactUrl' => $contactUrl, 'cityLabel' => city_label(),
         'jsonLdScript' => $jsonLdScript,
+    ]);
+    exit;
+}
+
+/* ---------- 城市专属首页（盘企式：每城独立可收录页面，?city=beijing 或伪静态 /beijing/） ---------- */
+if ($act === 'city_home') {
+    if (!$city) {
+        http_response_code(404);
+        render_tpl('404.php', [
+            'title' => '城市分站不存在', 'nav' => $navAll, 'settings' => settings_all(), 'city' => null,
+            'site' => $siteTitle, 'cat' => null, 'kw' => $keywords, 'desc' => $descAll,
+            'newsFoot' => $newsFoot,
+        ]);
+        exit;
+    }
+    $cityName = (string)$city['city'];
+    // 行业词：取全局 SEO 关键词首个词；为空则用「网站建设」
+    $industry = '';
+    $seoKw = trim((string)setting('seo_keywords', ''));
+    if ($seoKw !== '') {
+        $industry = trim(explode(',', $seoKw)[0]);
+    }
+    if ($industry === '') { $industry = '网站建设'; }
+    // 每城独立 TDK：城市表字段优先，未填则模板化生成（保证 200+ 城全部可收录）
+    $cityTitle = trim((string)$city['title_suffix']);
+    $title = $cityTitle !== ''
+        ? $siteTitle . ' - ' . $cityTitle
+        : $cityName . $industry . ' - ' . $siteTitle;
+    $kw = trim((string)$city['keywords']);
+    if ($kw === '') {
+        $kw = $cityName . $industry . ',' . $cityName . '网站制作,' . $cityName . '建站公司,' . $cityName . '网站设计,' . $cityName . $industry . '公司';
+    }
+    $desc = trim((string)$city['description']);
+    if ($desc === '') {
+        $desc = $cityName . $industry . '服务商——' . $siteTitle . '专注' . $cityName . $industry . '、' . $cityName . '网站制作、' . $cityName . 'SEO优化，本地化一对一服务，欢迎咨询。';
+    }
+    // 该城市内容聚合（标题含城市名的文章；配合「城市×行业批量发文」自动填充）
+    $cityArts = DB::all('SELECT * FROM articles WHERE status=1 AND site_id=? AND title LIKE ? ORDER BY id DESC LIMIT 8', [$sid, '%' . $cityName . '%']);
+    // 全部启用城市（城市间互链，避免孤儿页）
+    $allCities = DB::all('SELECT * FROM city_sites WHERE status=1 AND site_id=? ORDER BY sort ASC, id ASC', [$sid]);
+    // LocalBusiness 结构化数据（AI 问答可直接引用城市地址/电话）
+    $lbPhone = trim((string)setting('phone', ''));
+    $lbAddr  = trim((string)setting('address', ''));
+    $jsonLdScript = json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'LocalBusiness',
+        'name' => $cityName . $industry,
+        'description' => $desc,
+        'telephone' => $lbPhone,
+        'address' => ['@type' => 'PostalAddress', 'addressLocality' => $cityName, 'streetAddress' => $lbAddr],
+        'url' => city_url($city),
+        'areaServed' => $cityName,
+        'priceRange' => '面议',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    render_tpl('city_home.php', [
+        'title' => $title, 'nav' => $navAll, 'settings' => settings_all(), 'city' => $city,
+        'cities' => $allCities, 'cityArts' => $cityArts, 'site' => $siteTitle,
+        'cat' => null, 'kw' => $kw, 'desc' => $desc, 'industry' => $industry,
+        'newsFoot' => $newsFoot, 'aboutUrl' => $aboutUrl, 'contactUrl' => $contactUrl,
+        'jsonLdScript' => '<script type="application/ld+json">' . $jsonLdScript . '</script>',
     ]);
     exit;
 }
