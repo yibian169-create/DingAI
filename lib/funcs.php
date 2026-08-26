@@ -1417,12 +1417,13 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
             $imgErr = '未配置生图 API（生图地址/Key 为空）——写作 API 不能生图，需在「API 配置」单独填写生图地址/Key/模型';
         } else {
             $gist = mb_substr(preg_replace('/[\r\n]+/', '。', $c['out']), 0, 60);
+            $topImgs = '';
             for ($i = 0; $i < 2; $i++) {
                 $r = ai_image($imgUrl, $imgKey, $imgModel, "为一篇关于「{$topic}」的中文文章配一张写实风格配图，主题：{$gist}，第" . ($i + 1) . '张');
                 if ($r['ok']) {
                     // ai_image 已下载/解码并落库，返回本地可访问 URL（兼容 DALL·E-3 的 url 与 gpt-image-1 的 b64_json）
                     $tag = '<img src="' . $r['path'] . '" style="max-width:100%;border-radius:8px;margin:14px 0"><br>';
-                    $content = ai_insert_image($content, $tag, $i);
+                    $topImgs .= $tag; // 收集到顶端区
                     if ($i === 0) {
                         $cover = $r['path']; // 封面取第一张插图
                     }
@@ -1431,6 +1432,9 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
                     $imgErr = '第' . ($i + 1) . '张插图失败：' . $r['msg'];
                     break; // 第一张失败通常后续也失败，不再重复调用
                 }
+            }
+            if ($topImgs !== '') {
+                $content = $topImgs . $content; // 图片统一放在文章顶端
             }
         }
     }
@@ -1498,12 +1502,13 @@ function ai_illustrate_article(int $articleId, int $count = 2): array
     $gist = mb_substr(trim(strip_tags($content)), 0, 60);
     $imgCount = 0;
     $imgErr = '';
+    $topImgs = '';
     $count = max(1, min(4, $count));
     for ($i = 0; $i < $count; $i++) {
         $r = ai_image($imgUrl, $imgKey, $imgModel, "为一篇关于「{$title}」的中文文章配一张写实风格配图，主题：{$gist}，第" . ($i + 1) . '张');
         if ($r['ok']) {
             $tag = '<img src="' . $r['path'] . '" style="max-width:100%;border-radius:8px;margin:14px 0"><br>';
-            $content = ai_insert_image($content, $tag, $i);
+            $topImgs .= $tag; // 收集到顶端区，最后统一放文章开头
             if ($i === 0) {
                 $cover = $r['path']; // 封面取第一张插图
             }
@@ -1512,6 +1517,9 @@ function ai_illustrate_article(int $articleId, int $count = 2): array
             $imgErr = '第' . ($i + 1) . '张插图失败：' . $r['msg'];
             break;
         }
+    }
+    if ($topImgs !== '') {
+        $content = $topImgs . $content; // 图片统一放在文章顶端
     }
     DB::run('UPDATE articles SET content=?, cover=? WHERE id=? AND site_id=?', [$content, $cover, $articleId, $sid]);
     return ['ok' => true, 'title' => $title, 'content' => $content, 'cover' => $cover, 'img_count' => $imgCount, 'img_err' => $imgErr];
