@@ -155,8 +155,8 @@ function fetchModels(kind, btn){
   var saved = sel ? sel.value : '';
   var url = urlEl ? urlEl.value.trim() : '';
   var key = keyEl ? keyEl.value.trim() : '';
-  if(!url || !key){
-    if(msg){ msg.className = 'fetch-msg err'; msg.textContent = '请先填写本区域的 API 地址与密钥'; }
+  if(!url){
+    if(msg){ msg.className = 'fetch-msg err'; msg.textContent = '请先填写本区域的 API 地址'; }
     return;
   }
   if(btn){ btn.disabled = true; btn.textContent = '保存并拉取中…'; }

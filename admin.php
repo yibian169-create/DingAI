@@ -276,31 +276,32 @@ if ($m === 'api_save') {
 /* ---------- AJAX: 拉取 API 可用模型（OpenAI 兼容 /v1/models） ---------- */
 if ($m === 'api_fetch_models') {
     require_admin();
+    if (function_exists('ob_start')) { @ob_start(); }
     header('Content-Type: application/json; charset=utf-8');
+    $which  = (string)($_POST['which'] ?? 'ai');
+    $isImg  = ($which === 'img');
+    $urlKey = $isImg ? 'ai_img_url'  : 'ai_api_url';
+    $keyKey = $isImg ? 'ai_img_key'  : 'ai_api_key';
+    // 优先用前端传来的（用户临时改的），否则回退到数据库已存的
     $url = trim((string)($_POST['url'] ?? ''));
     $key = trim((string)($_POST['key'] ?? ''));
-    // 密钥未随请求提交（已配置后表单不回显）时，回退到已存储的密钥
-    if ($key === '') {
-        $key = setting('ai_api_key');
-    }
+    if ($url === '') { $url = setting($urlKey, ''); }
+    if ($key === '') { $key = setting($keyKey); }
     if ($url === '' || $key === '') {
-        echo json_encode(['ok' => false, 'msg' => '请先填写 API 地址与密钥']);
+        echo json_encode(['ok' => false, 'msg' => '请先填写' . ($isImg ? '生图' : '写作') . ' API 地址与密钥（页面底部点「保存 API 配置」后再拉取）']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
     $res = ai_list_models($url, $key);
     if (!empty($res['ok'])) {
         echo json_encode(['ok' => true, 'models' => $res['models']]);
-        exit;
+    } else {
+        $msg = $res['msg'] ?? '拉取失败';
+        if (!empty($res['http']))  { $msg .= '（HTTP ' . $res['http'] . '）'; }
+        if (!empty($res['sample'])) { $msg .= ' 响应：' . $res['sample']; }
+        echo json_encode(['ok' => false, 'msg' => $msg]);
     }
-    // 带诊断信息返回，方便定位（http 码 + 响应片段）
-    $msg = $res['msg'] ?? '拉取失败';
-    if (!empty($res['http'])) {
-        $msg .= '（HTTP ' . $res['http'] . '）';
-    }
-    if (!empty($res['sample'])) {
-        $msg .= ' 响应：' . $res['sample'];
-    }
-    echo json_encode(['ok' => false, 'msg' => $msg]);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
 }
 
