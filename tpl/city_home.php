@@ -15,6 +15,12 @@
     </div>
 </section>
 
+<!-- ============ 分站公告（后台「全国分站」可配置，清空则不显示） ============ -->
+<?php $cityNotice = trim((string)($settings['city_notice'] ?? '')); ?>
+<?php if ($cityNotice !== ''): ?>
+<div style="background:linear-gradient(115deg,#fde68a,#fbbf24);color:#451a03;text-align:center;padding:9px 16px;font-size:13px;font-weight:600;line-height:1.6">📢 <?= e($cityNotice) ?></div>
+<?php endif; ?>
+
 <!-- ============ 本地服务 + 城市内容聚合 ============ -->
 <section class="q-section q-section--tight">
     <div class="q-container q-list-layout">

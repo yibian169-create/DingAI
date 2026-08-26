@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_tdk_all', 'city_plan_run', 'city_save', 'city_del',
+    'city_enable', 'city_import', 'city_tdk_all', 'city_plan_run', 'city_notice', 'city_save', 'city_del',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -388,6 +388,8 @@ if ($m === 'geo') {
         'stats'      => geo_monitor_stats(),
         'articles'   => $articles,
         'cfg'        => settings_all(),
+        'cityList'   => DB::all('SELECT id, city, status FROM city_sites WHERE site_id=? ORDER BY sort ASC, id ASC', [$sid]),
+        'cityEnable' => setting('city_enable', '0'),
     ]);
     exit;
 }
@@ -557,6 +559,8 @@ if ($m === 'geo_monitor') {
         'stats'      => geo_monitor_stats(),
         'articles'   => $articles,
         'cfg'        => settings_all(),
+        'cityList'   => DB::all('SELECT id, city, status FROM city_sites WHERE site_id=? ORDER BY sort ASC, id ASC', [$sid]),
+        'cityEnable' => setting('city_enable', '0'),
     ]);
     exit;
 }
@@ -1063,7 +1067,9 @@ if ($m === 'city_plan_run') {
     if (function_exists('ob_start')) { @ob_start(); }
     header('Content-Type: application/json; charset=utf-8');
     $cityId   = (int)($_POST['city_id'] ?? 0);
-    $industry = trim((string)($_POST['industry'] ?? '网站建设'));
+    $kw       = trim((string)($_POST['kw'] ?? '')); // 关键词池混发：每城前端轮询传入不同的词
+    $industry = trim((string)($_POST['industry'] ?? ''));
+    if ($kw !== '') { $industry = $kw; }
     if ($industry === '') { $industry = '网站建设'; }
     $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=? AND status=1', [$cityId, $sid]);
     if (!$city) {
@@ -1124,6 +1130,12 @@ if ($m === 'city_save') {
 if ($m === 'city_del') {
     DB::run('DELETE FROM city_sites WHERE id=? AND site_id=?', [(int)($_POST['id'] ?? 0), $sid]);
     redirect('admin.php?m=citysites', '分站已删除');
+}
+if ($m === 'city_notice') {
+    require_admin();
+    $notice = trim((string)($_POST['notice'] ?? ''));
+    save_setting('city_notice', $notice);
+    redirect('admin.php?m=citysites', '分站公告已保存' . ($notice === '' ? '（已清空，前台不显示公告）' : ''));
 }
 
 /* ---------- 自定义表单 ---------- */

@@ -402,6 +402,32 @@
         </div>
       </div>
 
+      <!-- 全国分站内容批量生成（指定地区混发） -->
+      <div class="panel">
+        <h2>🏙 全国分站内容批量生成 <span class="muted">（指定地区 + 关键词池混发）</span></h2>
+        <?php if (($cityEnable ?? '0') !== '1'): ?>
+        <p class="sub-note" style="color:var(--danger)">⚠ 分站未开启：请先到「全国分站」菜单开启分站并一键导入城市。</p>
+        <?php else: ?>
+        <p class="sub-note">AI 逐城生成「城市 + 关键词」专属文章并自动发布（标题/正文带城市名，走「自动发文计划」所选栏目）。每城从关键词池<b>轮询取词</b>，相邻城市主题不同，避免站群模板感。<b>建议一次 50 城市</b>，分多批执行，随时可中断续跑。</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:4px"><input type="radio" name="cpScope" value="all" checked onchange="cpScopeTip()"> 全部城市</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:4px"><input type="radio" name="cpScope" value="sel" onchange="cpScopeTip()"> 指定城市</label>
+          <input id="cpCities" placeholder="城市名逗号分隔，如：北京,上海,广州" style="flex:1;min-width:220px;display:none">
+        </div>
+        <div class="batch-meta" style="margin-bottom:8px">
+          <input type="number" id="cpMax" value="50" min="1" max="300" style="width:90px">
+          <span class="muted">每批城市数（建议 50，分多批跑更稳）</span>
+        </div>
+        <h4>关键词池 <span class="muted">（每行一个词，逐城轮询混发）</span></h4>
+        <textarea id="cpKws" placeholder="例如：&#10;网站建设&#10;SEO优化&#10;小程序开发&#10;企业官网定制"></textarea>
+        <div class="batch-meta" style="margin-top:10px">
+          <button class="btn s" id="cpBtn" onclick="geoCityPlanRun()">🚀 开始逐城生成</button>
+          <span class="muted" id="cpTip">已启用 <?= count(array_filter($cityList ?? [], function ($c) { return (int)$c['status'] === 1; })) ?> 个城市</span>
+        </div>
+        <div class="gen-status" id="cpStatus"><span id="cpStatusText"></span></div>
+        <?php endif; ?>
+      </div>
+
       <!-- 批量生成 + 词条库 -->
       <div class="panel">
         <h2>📚 AI 问答库（给 AI 准备的 FAQ）</h2>
@@ -613,6 +639,58 @@ function switchTab(t){
   var u=new URL(location.href); u.searchParams.set('tab',t); history.replaceState(null,'',u);
 }
 function setStatus(el,text,isOk){var e=document.getElementById(el);e.style.display='block';e.className='gen-status '+(isOk?'ok':(isOk===false?'warn':''));document.getElementById(el+'Text').innerHTML=text;}
+/* ---------- 全国分站内容批量生成（指定地区 + 关键词池轮询混发） ---------- */
+var GEO_CITIES = <?= json_encode(array_values(array_filter(array_map(function ($c) { return ['id' => (int)$c['id'], 'city' => (string)$c['city'], 'status' => (int)$c['status']]; }, $cityList ?? []), function ($c) { return $c['status'] === 1; }))) ?>;
+var GEO_CSRF = <?= json_encode(csrf_token()) ?>;
+function cpScopeTip(){
+  var sel = document.querySelector('input[name=cpScope]:checked').value;
+  document.getElementById('cpCities').style.display = sel === 'sel' ? 'inline-block' : 'none';
+}
+function geoCityPlanRun(){
+  var scope = document.querySelector('input[name=cpScope]:checked').value;
+  var max = parseInt(document.getElementById('cpMax').value) || 50;
+  var kws = document.getElementById('cpKws').value.split(/[\r\n,，]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  var st = document.getElementById('cpStatus'), btn = document.getElementById('cpBtn');
+  if (!st || !btn) { return; }
+  if (!GEO_CITIES.length) { st.style.display = 'block'; st.textContent = '⚠ 暂无已启用城市，请先到「全国分站」菜单导入城市'; return; }
+  if (!kws.length) { alert('请至少填写一个关键词'); return; }
+  var list = GEO_CITIES.slice();
+  if (scope === 'sel') {
+    var names = document.getElementById('cpCities').value.split(/[,，、\s]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!names.length) { alert('请填写指定城市名（逗号分隔）'); return; }
+    list = list.filter(function (c) { return names.indexOf(c.city) >= 0; });
+    if (!list.length) { alert('没有匹配到已启用的指定城市'); return; }
+  }
+  list = list.slice(0, max);
+  if (!confirm('将为 ' + list.length + ' 个城市逐城生成文章（关键词池 ' + kws.length + ' 个轮询混发，每篇约 20~60 秒），继续？')) { return; }
+  btn.disabled = true;
+  st.style.display = 'block';
+  var i = 0, okN = 0, skipN = 0, failN = 0;
+  function finish(m) { st.textContent = m; btn.disabled = false; }
+  (function next() {
+    if (i >= list.length) {
+      finish('🎉 本批完成：成功 ' + okN + '，跳过 ' + skipN + '，失败 ' + failN + '。可再次点击继续生成剩余城市。');
+      return;
+    }
+    var c = list[i];
+    var kw = kws[i % kws.length]; // 关键词池轮询 → 相邻城市不同主题
+    i++;
+    st.textContent = '⏳ [' + i + '/' + list.length + '] 正在为《' + c.city + kw + '》生成…（每篇约 20~60 秒，请勿关闭页面）';
+    var fd = new FormData();
+    fd.append('city_id', c.id);
+    fd.append('kw', kw);
+    fd.append('csrf', GEO_CSRF);
+    fetch('admin.php?m=city_plan_run', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (r.ok) { okN++; st.textContent = '✅ [' + i + '/' + list.length + '] ' + c.city + '：' + (r.msg || '完成'); }
+        else if (r.dup) { skipN++; st.textContent = '⏭ [' + i + '/' + list.length + '] ' + c.city + ' 已有相关文章，跳过'; }
+        else { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 失败：' + (r.msg || '未知原因'); }
+        next();
+      })
+      .catch(function (e) { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 请求失败：' + e.message; next(); });
+  })();
+}
 function fillSamples(){document.getElementById('batchTopics').value='食品机械工厂招商加盟政策\n超声波清洗机哪家好\n工业烤箱怎么选\n食品加工厂需要哪些设备\n';updateCount();document.getElementById('batchTopics').focus();}
 function updateCount(){var t=document.getElementById('batchTopics').value;var n=t.split(/[\r\n,，]+/).filter(function(x){return x.trim()!=='';}).length;document.getElementById('batchCount').textContent='已输入 '+n+' 个主题'+(n>30?'（超过30将只处理前30个）':'');}
 document.getElementById('batchTopics').addEventListener('input',updateCount);

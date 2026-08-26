@@ -36,6 +36,16 @@
         </div>
 
         <div class="panel">
+          <h2>分站公告（前台城市页顶部横幅）</h2>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">显示在每个城市分站页顶部，用于运营通知（如"建议一次 50 城市分批生成"）。清空保存则不显示。</p>
+          <form method="post" action="admin.php?m=city_notice">
+            <input type="text" name="notice" value="<?= e(setting('city_notice', '')) ?>" placeholder="如：🚀 全国分站批量建设中，建议每次生成 50 个城市，分批进行更稳妥" style="margin-bottom:10px">
+            <button class="btn btn-p" type="submit">保存公告</button>
+          <?= csrf_field() ?>
+</form>
+        </div>
+
+        <div class="panel">
           <h2>一键导入全国分站</h2>
           <p style="color:var(--muted);font-size:13px;margin-bottom:12px">内置全国 200+ 城市（含拼音后缀）。已存在的城市自动跳过。</p>
           <form method="post" action="admin.php?m=city_import">
