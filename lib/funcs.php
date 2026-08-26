@@ -1038,6 +1038,31 @@ function ensure_schema(): void
             // 表可能不存在或权限不足，忽略
         }
     }
+
+    // 列级 utf8mb4 自愈：CONVERT TO 不一定能改列字符集，必须显式 MODIFY COLUMN（更可靠）
+    $colDefs = [
+        'city_sites'  => ['title_suffix VARCHAR(50) DEFAULT ""', 'keywords VARCHAR(255) DEFAULT ""', 'description VARCHAR(500) DEFAULT ""', 'city VARCHAR(50)', 'pinyin VARCHAR(50)'],
+        'articles'    => ['title VARCHAR(200)', 'summary VARCHAR(500)', 'content MEDIUMTEXT', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)', 'geo_summary TEXT', 'geo_faq TEXT'],
+        'products'    => ['title VARCHAR(200)', 'summary VARCHAR(500)', 'content MEDIUMTEXT', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)'],
+        'categories'  => ['name VARCHAR(100)', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)'],
+        'form_defs'   => ['name VARCHAR(100)', 'title VARCHAR(200)'],
+        'form_data'   => ['data MEDIUMTEXT'],
+        'geo_entries' => ['keyword VARCHAR(200)', 'answer MEDIUMTEXT'],
+        'geo_kb'      => ['title VARCHAR(200)', 'content MEDIUMTEXT'],
+    ];
+    foreach ($colDefs as $tbl => $cols) {
+        foreach ($cols as $def) {
+            $col = preg_split('/\s+/', $def)[0];
+            try {
+                $cur = DB::one("SELECT CHARACTER_SET_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?", [$tbl, $col]);
+                if ($cur && ($cur['c'] ?? '') !== 'utf8mb4') {
+                    DB::run("ALTER TABLE `$tbl` MODIFY `$col` $def CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                }
+            } catch (Throwable $e) {
+                // 忽略
+            }
+        }
+    }
 }
 
 /* =========================================================
