@@ -4,6 +4,13 @@
  * 路由: admin.php?m=模块名
  */
 
+// 长任务（AI 生图、大数据导出等）需要立即放开 PHP 执行时间和内存。
+// 放在文件最开头、任何 require 之前，确保 30s 默认 max_execution_time 不会先触发 fatal error。
+// 兼容 disable_functions：先 ini_set（一般不被禁），fallback set_time_limit
+if (function_exists('ini_set')) { @ini_set('max_execution_time', '0'); }
+if (function_exists('ini_set')) { @ini_set('memory_limit', '512M'); }
+if (function_exists('set_time_limit')) { @set_time_limit(0); }
+
 /* 未安装 → 跳转安装向导 */
 if (!file_exists(__DIR__ . '/install.lock')) {
     header('Location: install/index.php');
