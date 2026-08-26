@@ -34,7 +34,7 @@ $sid = current_site_id();
 /* ---------- CSRF 守卫：所有写操作 POST 动作必须携带有效 token ---------- */
 $csrf_protected = [
     'category_save', 'category_del', 'article_save', 'article_del', 'article_toggle',
-    'api_save', 'api_fetch_models', 'ai_save_api', 'ai_seo', 'ai_geo', 'ai_plan', 'ai_generate', 'ai_illustrate', 'ai_post_now',
+    'api_save', 'api_fetch_models', 'ai_save_api', 'ai_seo', 'ai_geo', 'ai_plan', 'ai_generate', 'ai_illustrate', 'ai_unillustrated', 'ai_post_now',
     'geo_advert_save', 'geo_generate', 'geo_generate_batch', 'geo_sync_article', 'geo_del',
     'geo_kw_distill', 'geo_kw_del', 'geo_kw_feed', 'geo_kb_add', 'geo_kb_del',
     'geo_eeat', 'geo_schema', 'geo_uniq', 'geo_distribute',
@@ -646,6 +646,16 @@ if ($m === 'ai_illustrate') {
         exit;
     }
     echo json_encode(ai_illustrate_article($articleId, $count), JSON_UNESCAPED_UNICODE);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+    exit;
+}
+
+if ($m === 'ai_unillustrated') {
+    require_admin();
+    // 查询正文没有 <img> 的文章（未配图），供文章列表侧批量配图
+    if (function_exists('ob_start')) { @ob_start(); }
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => true, 'list' => ai_unillustrated_articles()], JSON_UNESCAPED_UNICODE);
     if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
 }

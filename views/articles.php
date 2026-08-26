@@ -150,12 +150,16 @@
       <!-- 右侧：文章列表 -->
       <div class="split-list">
         <div class="panel">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
             <h2 style="font-size:15px;margin:0">文章列表</h2>
-            <span style="font-size:12.5px;color:var(--muted)">共 <?= $pg['total'] ?? 0 ?> 篇</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;color:var(--muted)">共 <?= $pg['total'] ?? 0 ?> 篇</span>
+              <button type="button" class="btn btn-s" onclick="aiBatchIllustrate()">✨ AI 批量配图</button>
+            </div>
           </div>
+          <div id="batchStatus" class="note" style="display:none;margin-bottom:10px"></div>
           <table>
-            <thead><tr><th style="width:60px">ID</th><th>标题</th><th style="width:110px">栏目</th><th style="width:90px">推荐</th><th style="width:90px">状态</th><th style="width:80px">浏览</th><th style="width:110px">时间</th><th style="width:200px">操作</th></tr></thead>
+            <thead><tr><th style="width:60px">ID</th><th>标题</th><th style="width:110px">栏目</th><th style="width:90px">推荐</th><th style="width:90px">状态</th><th style="width:80px">浏览</th><th style="width:110px">时间</th><th style="width:260px">操作</th></tr></thead>
             <tbody>
               <?php foreach ($list as $a): ?>
               <tr>
@@ -182,6 +186,7 @@
                 <td><?= substr($a['created_at'], 0, 10) ?></td>
                 <td>
                   <button class="btn btn-s" onclick='editArticle(<?= json_encode($a, JSON_UNESCAPED_UNICODE) ?>)'>编辑</button>
+                  <button type="button" class="btn btn-s" data-id="<?= (int)$a['id'] ?>" data-title="<?= e($a['title']) ?>" onclick="aiIllustrateOne(this)">🎨 配图</button>
                   <form method="post" action="admin.php?m=article_del" style="display:inline" onsubmit="return confirm('确定删除？')">
                     <input type="hidden" name="id" value="<?= $a['id'] ?>">
                     <button class="btn btn-s btn-d" type="submit">删除</button>
@@ -390,6 +395,50 @@ function aiIllustrate(){
       st.textContent='⚠ 插图失败：'+r.img_err;
     }
   }).catch(e=>{ if(btn) btn.disabled=false; st.textContent='⚠ 请求失败：'+e.message; });
+}
+
+/* ---------- 列表侧 AI 批量配图（自动检测未配图文章，逐篇补插图） ---------- */
+function aiBatchIllustrate(){
+  var st=document.getElementById('batchStatus');
+  if(!st) return;
+  st.style.display='block';
+  st.textContent='🔍 正在检测未配图的文章…';
+  fetch('admin.php?m=ai_unillustrated').then(r=>r.json()).then(r=>{
+    if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
+    var list=r.list||[];
+    if(list.length===0){ st.textContent='✅ 所有文章都已配图，无需处理'; return; }
+    if(!confirm('检测到 '+list.length+' 篇未配图的文章，将逐篇生成 2 张 AI 插图并插入正文。\n每篇约 30~120 秒，全部完成预计 '+Math.ceil(list.length*1.5)+' 分钟。\n期间请勿关闭页面，继续？')){
+      st.textContent='已取消（'+list.length+' 篇未配图）'; return;
+    }
+    var i=0, okN=0, failN=0;
+    (function next(){
+      if(i>=list.length){
+        st.textContent='🎉 完成：成功 '+okN+' 篇，失败 '+failN+' 篇'+(failN?'（失败原因见上文状态）':'');
+        return;
+      }
+      var a=list[i++];
+      st.textContent='⏳ ['+i+'/'+list.length+'] 正在为《'+a.title+'》配图…';
+      var fd=new FormData(); fd.append('article_id',a.id); fd.append('count','2');
+      fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
+        if(r.ok && r.img_count>0){ okN++; st.textContent='✅ ['+i+'/'+list.length+'] 《'+a.title+'》已插入 '+r.img_count+' 张'; }
+        else { failN++; st.textContent='⚠ ['+i+'/'+list.length+'] 《'+a.title+'》失败：'+(r.msg||r.img_err||'未知原因'); }
+        next();
+      }).catch(e=>{ failN++; st.textContent='⚠ ['+i+'/'+list.length+'] 《'+a.title+'》请求失败：'+e.message; next(); });
+    })();
+  }).catch(e=>{ st.textContent='⚠ 请求失败：'+e.message; });
+}
+
+/* ---------- 列表行单篇 AI 配图 ---------- */
+function aiIllustrateOne(btn){
+  var id=btn.getAttribute('data-id');
+  var title=btn.getAttribute('data-title')||'该文章';
+  if(!confirm('为《'+title+'》生成 2 张 AI 插图并插入正文？')) return;
+  btn.disabled=true; var old=btn.textContent; btn.textContent='⏳';
+  var fd=new FormData(); fd.append('article_id',id); fd.append('count','2');
+  fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
+    btn.disabled=false; btn.textContent=old;
+    alert(r.ok && r.img_count>0 ? '✅《'+title+'》已插入 '+r.img_count+' 张插图' : '⚠ '+(r.msg||r.img_err||'配图失败'));
+  }).catch(e=>{ btn.disabled=false; btn.textContent=old; alert('请求失败：'+e.message); });
 }
 
 /* ---------- AI SEO / GEO 共用接口 ---------- */

@@ -1510,6 +1510,19 @@ function ai_illustrate_article(int $articleId, int $count = 2): array
     return ['ok' => true, 'title' => $title, 'content' => $content, 'cover' => $cover, 'img_count' => $imgCount, 'img_err' => $imgErr];
 }
 
+/** 查询正文中没有任何 <img> 的文章（未配图），供列表侧批量 AI 配图 */
+function ai_unillustrated_articles(int $limit = 100): array
+{
+    $sid = current_site_id();
+    $limit = max(1, min(200, $limit));
+    $rows = DB::all('SELECT id, title FROM articles WHERE site_id=? AND content NOT LIKE ? ORDER BY id DESC LIMIT ' . $limit, [$sid, '%<img%']);
+    $out = [];
+    foreach ($rows as $r) {
+        $out[] = ['id' => (int)$r['id'], 'title' => (string)$r['title']];
+    }
+    return $out;
+}
+
 /**
  * 网页伪 Cron：前台访问时检查是否到自动发文时间点，到则生成并发布一篇。
  * 防重复：ai_post_log 记录今日已用关键词；关键词池循环。
