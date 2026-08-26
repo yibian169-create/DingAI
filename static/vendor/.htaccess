@@ -1,0 +1,4 @@
+# 第三方资源目录禁止脚本执行（纵深防御）
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht|cgi|pl)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f1ece3"/>
+    </linearGradient>
+    <radialGradient id="r3" cx="0.5" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#c9a87c" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#c9a87c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#g3)"/>
+  <rect width="1600" height="900" fill="url(#r3)"/>
+  <g opacity="0.14" fill="#7d9471">
+    <path d="M0 0 Q 200 300 0 600 T 0 900 L 0 0 Z"/>
+    <path d="M1600 0 Q 1400 300 1600 600 T 1600 900 L 1600 0 Z"/>
+  </g>
+  <g opacity="0.12" fill="#e8e0d2">
+    <path d="M0 0 Q 120 280 0 560 T 0 900 L 0 0 Z"/>
+    <path d="M1600 0 Q 1480 280 1600 560 T 1600 900 L 1600 0 Z"/>
+  </g>
+  <g opacity="0.2" fill="#c9a87c">
+    <circle cx="800" cy="450" r="120"/>
+    <circle cx="880" cy="520" r="80"/>
+    <circle cx="720" cy="520" r="80"/>
+  </g>
+  <text x="80" y="780" font-family="Microsoft YaHei, sans-serif" font-size="90" font-weight="800" fill="#3d3a36">CURTAIN &amp; SOFA</text>
+  <text x="84" y="840" font-family="Microsoft YaHei, sans-serif" font-size="34" fill="#7d9471">Soft furnishings for warm living spaces</text>
+</svg>

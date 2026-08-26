@@ -1,0 +1,10 @@
+# 禁止在模板目录执行任何脚本，防止上传压缩包被作为后门利用
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|sh|cgi|htaccess)$">
+    Require all denied
+</FilesMatch>
+
+# 若服务器较旧未启用 mod_authz_core，可改用下面两行（二选一）
+# <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|sh|cgi|htaccess)$">
+#     Order allow,deny
+#     Deny from all
+# </FilesMatch>

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050a10"/>
+      <stop offset="0.5" stop-color="#0a1a24"/>
+      <stop offset="1" stop-color="#0d1216"/>
+    </linearGradient>
+    <linearGradient id="fabric2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a3c" stop-opacity="0.35"/>
+      <stop offset="0.35" stop-color="#ffb454" stop-opacity="0.45"/>
+      <stop offset="0.7" stop-color="#4cc9f0" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ff5a3c" stop-opacity="0.25"/>
+    </linearGradient>
+    <linearGradient id="bar2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a2b36"/>
+      <stop offset="1" stop-color="#0d161c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg2)"/>
+  <!-- 印花横梁 -->
+  <rect x="180" y="220" width="1240" height="90" rx="10" fill="url(#bar2)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <g fill="#4cc9f0" opacity="0.7">
+    <rect x="260" y="240" width="14" height="50" rx="7"/><rect x="320" y="240" width="14" height="50" rx="7"/>
+    <rect x="380" y="240" width="14" height="50" rx="7"/><rect x="440" y="240" width="14" height="50" rx="7"/>
+    <rect x="500" y="240" width="14" height="50" rx="7"/><rect x="560" y="240" width="14" height="50" rx="7"/>
+    <rect x="620" y="240" width="14" height="50" rx="7"/><rect x="680" y="240" width="14" height="50" rx="7"/>
+    <rect x="740" y="240" width="14" height="50" rx="7"/><rect x="800" y="240" width="14" height="50" rx="7"/>
+    <rect x="860" y="240" width="14" height="50" rx="7"/><rect x="920" y="240" width="14" height="50" rx="7"/>
+    <rect x="980" y="240" width="14" height="50" rx="7"/><rect x="1040" y="240" width="14" height="50" rx="7"/>
+    <rect x="1100" y="240" width="14" height="50" rx="7"/><rect x="1160" y="240" width="14" height="50" rx="7"/>
+    <rect x="1220" y="240" width="14" height="50" rx="7"/><rect x="1280" y="240" width="14" height="50" rx="7"/>
+    <rect x="1340" y="240" width="14" height="50" rx="7"/>
+  </g>
+  <!-- 布料 -->
+  <path d="M120 320 Q 400 380 800 320 T 1480 320 L 1480 720 Q 1100 780 800 720 T 120 720 Z" fill="url(#fabric2)" opacity="0.55"/>
+  <g stroke="rgba(255,255,255,0.08)" stroke-width="1.5" fill="none">
+    <path d="M120 400 Q 400 460 800 400 T 1480 400"/>
+    <path d="M120 480 Q 400 540 800 480 T 1480 480"/>
+    <path d="M120 560 Q 400 620 800 560 T 1480 560"/>
+    <path d="M120 640 Q 400 700 800 640 T 1480 640"/>
+  </g>
+  <!-- 喷墨点阵 -->
+  <g opacity="0.5">
+    <circle cx="380" cy="500" r="6" fill="#ff5a3c"/><circle cx="420" cy="470" r="5" fill="#ffb454"/>
+    <circle cx="460" cy="510" r="7" fill="#4cc9f0"/><circle cx="520" cy="450" r="4" fill="#ff5a3c"/>
+    <circle cx="560" cy="490" r="6" fill="#ffb454"/><circle cx="620" cy="530" r="5" fill="#4cc9f0"/>
+    <circle cx="680" cy="460" r="7" fill="#ff5a3c"/><circle cx="740" cy="500" r="5" fill="#ffb454"/>
+    <circle cx="800" cy="470" r="6" fill="#4cc9f0"/><circle cx="860" cy="520" r="4" fill="#ff5a3c"/>
+    <circle cx="920" cy="480" r="7" fill="#ffb454"/><circle cx="980" cy="450" r="5" fill="#4cc9f0"/>
+  </g>
+  <!-- 左侧光晕 -->
+  <ellipse cx="260" cy="500" rx="360" ry="420" fill="radial-gradient(circle, rgba(76,201,240,0.16) 0%, transparent 70%)" opacity="0.7"/>
+  <!-- 文字 -->
+  <text x="90" y="760" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="96" font-weight="900" fill="#ffffff" opacity="0.95">数码印花</text>
+  <text x="94" y="820" font-family="Microsoft YaHei, sans-serif" font-size="40" fill="#4cc9f0" opacity="0.9">DIGITAL TEXTILE PRINTING</text>
+</svg>

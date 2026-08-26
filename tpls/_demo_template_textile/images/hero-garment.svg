@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0c10"/>
+      <stop offset="0.5" stop-color="#151008"/>
+      <stop offset="1" stop-color="#1a120a"/>
+    </linearGradient>
+    <linearGradient id="fabric3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb454" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ff5a3c" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg3)"/>
+  <!-- 右侧人体模型 / 衣架 -->
+  <g transform="translate(1050,120)" opacity="0.9">
+    <ellipse cx="120" cy="90" rx="70" ry="55" fill="#1f1610" stroke="#2e2118" stroke-width="2"/>
+    <path d="M60 130 Q 20 200 30 360 L 70 700" fill="none" stroke="#2e2118" stroke-width="3"/>
+    <path d="M180 130 Q 220 200 210 360 L 170 700" fill="none" stroke="#2e2118" stroke-width="3"/>
+    <path d="M30 360 Q 120 420 210 360" fill="none" stroke="#2e2118" stroke-width="2"/>
+    <!-- 悬垂布料 -->
+    <path d="M30 360 Q 120 460 210 360 L 210 720 Q 120 780 30 720 Z" fill="url(#fabric3)"/>
+    <path d="M30 360 Q 80 500 30 720" fill="none" stroke="rgba(255,180,84,0.15)" stroke-width="2"/>
+    <path d="M210 360 Q 160 500 210 720" fill="none" stroke="rgba(255,180,84,0.15)" stroke-width="2"/>
+  </g>
+  <!-- 缝纫线轨迹 -->
+  <g stroke="#ffb454" stroke-width="2" stroke-opacity="0.35" stroke-dasharray="8 8" fill="none">
+    <path d="M220 600 Q 360 560 500 600"/>
+    <path d="M220 640 Q 360 600 500 640"/>
+    <path d="M220 680 Q 360 640 500 680"/>
+  </g>
+  <!-- 裁剪台 -->
+  <rect x="120" y="520" width="480" height="18" rx="4" fill="#1e1812" stroke="#2e2118" stroke-width="1"/>
+  <rect x="140" y="538" width="22" height="220" rx="2" fill="#16120e"/>
+  <rect x="558" y="538" width="22" height="220" rx="2" fill="#16120e"/>
+  <!-- 剪刀 -->
+  <g transform="translate(360,580) rotate(-30)">
+    <path d="M0 0 L120 80" stroke="#c0a080" stroke-width="6" stroke-linecap="round"/>
+    <path d="M0 80 L120 0" stroke="#c0a080" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="60" cy="40" r="10" fill="#ff5a3c" opacity="0.6"/>
+  </g>
+  <!-- 左侧光晕 -->
+  <ellipse cx="300" cy="500" rx="360" ry="420" fill="radial-gradient(circle, rgba(255,90,60,0.18) 0%, transparent 70%)" opacity="0.7"/>
+  <!-- 顶部装饰 -->
+  <g stroke="#ff5a3c" stroke-width="1.5" stroke-opacity="0.2" fill="none">
+    <path d="M1300 0 Q 1380 180 1320 360"/>
+    <path d="M1420 0 Q 1500 200 1440 380"/>
+  </g>
+  <!-- 文字 -->
+  <text x="90" y="760" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="96" font-weight="900" fill="#ffffff" opacity="0.95">成衣智造</text>
+  <text x="94" y="820" font-family="Microsoft YaHei, sans-serif" font-size="40" fill="#ffb454" opacity="0.9">GARMENT MANUFACTURING</text>
+</svg>

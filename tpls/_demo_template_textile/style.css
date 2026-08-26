@@ -1,0 +1,541 @@
+@charset "UTF-8";
+/* ============================================================
+ * deyingding template: Textile & Garment Factory "Dark Flame"
+ * High-impact dark industrial theme for textile mills, garment
+ * factories, fabric merchants and OEM/ODM contractors.
+ *
+ * Palette: midnight #0a0c10 / flame orange #ff5a3c / amber #ffb454
+ *          / thread cyan #4cc9f0. Warm-white text on dark ground.
+ * Effects: floating thread canvas, char-by-char title reveal,
+ *          parallax hero, counters, 3D tilt cards, slider.
+ * DIY: all text and buttons are editable in visual editor.
+ * ============================================================ */
+
+/* ---------- 1. Color tokens (override system :root) ---------- */
+:root {
+    --bg: #0a0c10;
+    --bg-2: #101319;
+    --surface: rgba(255, 255, 255, 0.04);
+    --surface-2: rgba(255, 255, 255, 0.07);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text: #f3efe9;
+    --muted: #9aa0a8;
+    --faint: #5f6671;
+    --c1: #ff5a3c;             /* flame orange: primary accent */
+    --c2: #ffb454;             /* amber: warm lines / highlights */
+    --c3: #4cc9f0;             /* thread cyan: tech accent */
+    --grad: linear-gradient(115deg, #ff6a3d 0%, #ffb454 55%, #ff5a3c 100%);
+    --grad-soft: linear-gradient(115deg, rgba(255, 106, 61, 0.16), rgba(255, 180, 84, 0.16) 55%, rgba(255, 90, 60, 0.16));
+    --radius: 18px;
+    --radius-sm: 12px;
+    --shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- 2. Global ---------- */
+html { scroll-behavior: smooth; }
+body {
+    background:
+        radial-gradient(120% 80% at 50% -10%, rgba(255, 90, 60, 0.10) 0%, transparent 55%),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 30px),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 30px),
+        var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    font-weight: 300;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+::selection { background: rgba(255, 90, 60, 0.35); color: #fff; }
+
+/* ambient glow breathing */
+@keyframes veBreathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.85; } }
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(circle 38% 32% at 12% 8%, rgba(255, 90, 60, 0.10) 0%, transparent 70%),
+        radial-gradient(circle 34% 30% at 92% 22%, rgba(76, 201, 240, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: veBreathe 9s ease-in-out infinite;
+}
+
+/* ---------- 3. Hero ---------- */
+.q-hero {
+    position: relative;
+    min-height: 88vh;
+    display: flex;
+    align-items: center;
+    background: #06080c;
+    overflow: hidden;
+}
+.q-hero #ve-threads {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: 0.55; z-index: 1;
+}
+.q-hero::after {
+    content: "";
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background:
+        radial-gradient(50% 50% at 78% 30%, rgba(255, 90, 60, 0.20) 0%, transparent 60%),
+        radial-gradient(46% 46% at 18% 78%, rgba(76, 201, 240, 0.14) 0%, transparent 62%);
+}
+.q-hero__copy { position: relative; z-index: 3; }
+.q-hero .q-kicker {
+    color: var(--c2);
+    font-weight: 700;
+    font-size: 0.86rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+.q-hero .q-kicker::before {
+    content: "";
+    width: 38px; height: 2px;
+    background: var(--grad);
+}
+.q-hero__title {
+    font-size: clamp(2.8rem, 7vw, 5.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    color: #fff;
+    margin: 1.6rem 0;
+    text-shadow: 0 4px 40px rgba(255, 90, 60, 0.25);
+}
+.q-hero__title .ve-char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(34px) rotate(6deg);
+    transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.3, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
+    transition-delay: var(--d, 0ms);
+}
+.q-hero__title.in .ve-char { opacity: 1; transform: none; }
+.q-hero__title em {
+    font-style: normal; font-weight: 800;
+    background: var(--grad);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.q-hero__sub {
+    color: #c7ccd4;
+    font-size: 1.14rem;
+    max-width: 36em;
+    line-height: 2;
+    opacity: 0; transform: translateY(20px);
+    animation: veFadeUp 0.9s ease forwards 0.9s;
+}
+@keyframes veFadeUp { to { opacity: 1; transform: none; } }
+.q-hero__cta { margin-top: 2.6rem; opacity: 0; animation: veFadeUp 0.9s ease forwards 1.1s; }
+.q-hero__cta .q-btn {
+    background: var(--grad);
+    color: #1a0e08;
+    font-weight: 800;
+    padding: 1.05rem 3.2rem;
+    border-radius: 4px;
+    letter-spacing: 0.18em;
+    box-shadow: 0 14px 40px rgba(255, 90, 60, 0.45);
+    animation: veBtnPulse 3.2s ease-in-out infinite;
+}
+@keyframes veBtnPulse {
+    0%, 100% { box-shadow: 0 14px 40px rgba(255, 90, 60, 0.4); }
+    50% { box-shadow: 0 14px 60px rgba(255, 90, 60, 0.7), 0 0 0 7px rgba(255, 90, 60, 0.08); }
+}
+.q-hero__cta .q-btn:hover { transform: translateY(-3px); }
+.q-hero__tags { margin-top: 2.6rem; display: flex; flex-wrap: wrap; gap: 1.4rem; opacity: 0; animation: veFadeUp 0.9s ease forwards 1.3s; }
+.q-hero__tags span {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    padding: 0.5rem 1.1rem;
+    color: #d7dbe2; font-size: 0.85rem; letter-spacing: 0.1em;
+    backdrop-filter: blur(6px);
+}
+.q-hero__tags span b { color: var(--c2); font-weight: 700; }
+#net, .scanline, .glow { display: none !important; }
+
+/* ---------- 3.1 Slider ---------- */
+.q-hero__slider { position: absolute; inset: 0; z-index: 0; }
+.q-hero__slide {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transform: scale(1.12);
+    transition: opacity 1.1s ease, transform 7s linear;
+    filter: saturate(1.05) contrast(1.02);
+}
+.q-hero__slide.active { opacity: 1; transform: scale(1); }
+.q-hero__mask {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background:
+        linear-gradient(95deg, rgba(8, 10, 14, 0.95) 0%, rgba(8, 10, 14, 0.72) 42%, rgba(8, 10, 14, 0.18) 100%),
+        linear-gradient(0deg, rgba(8, 10, 14, 0.6) 0%, transparent 40%);
+}
+.q-hero__dots { position: absolute; z-index: 4; bottom: 34px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+.q-hero__dots button {
+    width: 12px; height: 12px; border: none; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3); cursor: pointer; padding: 0;
+    transition: all 0.3s;
+}
+.q-hero__dots button.on {
+    width: 40px; border-radius: 999px;
+    background: var(--grad);
+    box-shadow: 0 0 14px rgba(255, 90, 60, 0.6);
+}
+@media (max-width: 640px) {
+    .q-hero__mask { background: linear-gradient(180deg, rgba(8,10,14,.72) 0%, rgba(8,10,14,.45) 45%, rgba(8,10,14,.85) 100%); }
+}
+
+/* ---------- 4. Buttons ---------- */
+.q-btn--grad, .q-btn {
+    background: var(--grad);
+    color: #1a0e08;
+    border: none;
+    border-radius: 4px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    padding: 0.95rem 2.8rem;
+    box-shadow: 0 10px 30px rgba(255, 90, 60, 0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.q-btn--grad:hover, .q-btn:hover { transform: translateY(-3px); box-shadow: 0 16px 44px rgba(255, 90, 60, 0.5); }
+.q-btn--ghost {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text);
+    border-radius: 4px;
+    box-shadow: none;
+}
+.q-btn--ghost:hover { border-color: var(--c1); color: var(--c1); background: rgba(255, 90, 60, 0.08); }
+
+/* ---------- 5. Common sections ---------- */
+.q-section { padding: 7rem 0; position: relative; z-index: 1; }
+.q-kicker {
+    color: var(--c2);
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+}
+.q-title {
+    color: #fff;
+    font-weight: 800;
+    font-size: clamp(1.9rem, 3.6vw, 3rem);
+    letter-spacing: 0.01em;
+    margin: 1.1rem 0 1.4rem;
+    padding-bottom: 1.5rem;
+    position: relative;
+}
+.q-title::after {
+    content: "";
+    position: absolute; left: 0; bottom: 0;
+    width: 64px; height: 3px;
+    background: var(--grad);
+    background-size: 200% 100%;
+    animation: veFlow 3s linear infinite;
+    border-radius: 2px;
+}
+@keyframes veFlow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.q-title em { font-weight: 800; font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.q-desc { color: var(--muted); font-size: 1.05rem; line-height: 2; max-width: 46em; }
+
+/* reveal animations */
+.q-reveal { opacity: 0; transform: translateY(34px); transition: opacity 0.8s cubic-bezier(0.2,0.7,0.3,1), transform 0.8s cubic-bezier(0.2,0.7,0.3,1); }
+.q-reveal.is-visible { opacity: 1; transform: none; }
+.q-reveal[data-dir="left"] { transform: translateX(-40px); }
+.q-reveal[data-dir="right"] { transform: translateX(40px); }
+.q-reveal[data-dir="scale"] { transform: scale(0.92); }
+.q-reveal[data-dir="left"].is-visible, .q-reveal[data-dir="right"].is-visible, .q-reveal[data-dir="scale"].is-visible { transform: none; }
+
+/* ---------- 6. Statistics ---------- */
+.q-stats .q-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--c1);
+    border-radius: 14px;
+    padding: 2.4rem 1.4rem;
+    text-align: center;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.q-stats .q-stat:hover { transform: translateY(-6px); border-color: rgba(255, 90, 60, 0.5); box-shadow: 0 22px 50px rgba(255, 90, 60, 0.18); }
+.q-stats .q-stat__num {
+    color: #fff;
+    font-size: 3.4rem;
+    font-weight: 800;
+    font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif;
+    letter-spacing: 0.01em;
+    background: var(--grad);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.q-stats .q-stat__num::after {
+    content: "";
+    display: block; width: 36px; height: 3px;
+    background: var(--grad);
+    margin: 1rem auto 0.8rem;
+    border-radius: 2px;
+}
+.q-stats .q-stat__label { color: var(--muted); font-size: 0.95rem; letter-spacing: 0.06em; }
+
+/* ---------- 7. Capabilities ---------- */
+.q-feat__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem; }
+.q-feat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.6rem 1.9rem;
+    backdrop-filter: blur(8px);
+    transform-style: preserve-3d;
+    transition: transform 0.35s cubic-bezier(0.2,0.7,0.3,1), border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+.q-feat:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 26px 56px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 90, 60, 0.2);
+    z-index: 2;
+}
+.q-feat::before {
+    content: "";
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 3px;
+    background: var(--grad);
+    transition: left 0.6s ease;
+}
+.q-feat:hover::before { left: 0; }
+.q-feat::after {
+    content: "";
+    position: absolute; top: 14px; right: 14px;
+    width: 26px; height: 26px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.18);
+    border-right: 1px dashed rgba(255, 255, 255, 0.18);
+    border-top-right-radius: 8px;
+}
+.q-feat__idx {
+    background: rgba(255, 90, 60, 0.12);
+    color: var(--c2);
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.22em;
+    border: 1px solid rgba(255, 90, 60, 0.3);
+    border-radius: 6px;
+    padding: 3px 11px;
+    display: inline-block;
+}
+.q-feat__ico {
+    width: 56px; height: 56px;
+    display: grid; place-items: center;
+    background: var(--grad-soft);
+    color: var(--c1);
+    border: 1px solid rgba(255, 90, 60, 0.35);
+    border-radius: 14px;
+    margin: 1.4rem 0 1.2rem;
+    transition: transform 0.3s;
+}
+.q-feat:hover .q-feat__ico { transform: scale(1.1) rotate(-4deg); }
+.q-feat__ico svg { width: 28px; height: 28px; }
+.q-feat h3 { color: #fff; font-weight: 700; font-size: 1.25rem; margin: 0 0 0.7rem; letter-spacing: 0.04em; }
+.q-feat p { color: var(--muted); font-size: 0.95rem; line-height: 1.9; }
+.q-feat__cta { text-align: center; margin-top: 3rem; }
+
+/* ---------- 8. About split ---------- */
+.q-split { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+.q-split__visual { position: relative; min-height: 420px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--bg-2); }
+.q-split__list li {
+    color: #d2d6dd;
+    padding-left: 1.6rem;
+    margin-bottom: 1rem;
+    position: relative;
+    border: none;
+    line-height: 1.7;
+}
+.q-split__list li::before {
+    content: "";
+    position: absolute; left: 0; top: 0.55em;
+    width: 9px; height: 9px;
+    background: var(--grad);
+    transform: rotate(45deg);
+    border-radius: 2px;
+}
+.q-split__list li svg { display: none; }
+
+/* ---------- 9. Workflow ---------- */
+.q-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6rem; }
+.q-flow__step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    backdrop-filter: blur(8px);
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.q-flow__step:hover { border-color: rgba(255, 90, 60, 0.5); transform: translateY(-5px); box-shadow: 0 18px 40px rgba(255, 90, 60, 0.15); }
+.q-flow__num {
+    background: var(--grad);
+    color: #1a0e08;
+    font-size: 1.3rem;
+    font-weight: 800;
+    width: 50px; height: 50px;
+    display: grid; place-items: center;
+    border-radius: 14px;
+    font-family: "Bahnschrift", "DIN Alternate", sans-serif;
+}
+.q-flow__step h3 { color: #fff; font-weight: 700; font-size: 1.15rem; margin: 1.1rem 0 0.5rem; letter-spacing: 0.06em; }
+.q-flow__step p { color: var(--muted); font-size: 0.92rem; line-height: 1.85; }
+
+/* ---------- 10. CTA ---------- */
+.q-cta {
+    background:
+        radial-gradient(80% 140% at 50% 0%, rgba(255, 90, 60, 0.18) 0%, transparent 60%),
+        linear-gradient(160deg, #14181f, #0c0f15);
+    border: 1px solid rgba(255, 90, 60, 0.28);
+    border-radius: 22px;
+    padding: 5rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.q-cta::before {
+    content: "";
+    position: absolute; top: 50%; left: 50%;
+    width: 520px; height: 520px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255, 90, 60, 0.16) 0%, transparent 62%);
+    animation: veBreathe 7s ease-in-out infinite;
+    pointer-events: none;
+}
+.q-cta::after {
+    content: "";
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 3px;
+    background: var(--grad);
+    background-size: 200% 100%;
+    animation: veFlow 3s linear infinite;
+}
+.q-cta h2 { color: #fff; font-size: clamp(1.7rem, 3.2vw, 2.6rem); font-weight: 800; letter-spacing: 0.04em; position: relative; }
+.q-cta p { color: var(--muted); margin: 1.2rem 0 2.6rem; position: relative; }
+.q-cta__row { display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap; position: relative; }
+
+/* ---------- 11. Contact ---------- */
+.q-contact { background: var(--bg-2); }
+.q-contact .q-kicker { color: var(--c2); }
+.q-contact .q-title { color: #fff; }
+.q-contact .q-desc { color: var(--muted); }
+.q-contact__grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; }
+.q-contact__info { display: flex; flex-direction: column; gap: 0.9rem; }
+.q-contact__row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.1rem 1.2rem;
+    display: flex; align-items: center; gap: 1rem;
+    transition: border-color 0.3s, transform 0.3s, background 0.3s;
+}
+.q-contact__row:hover { border-color: rgba(255, 90, 60, 0.5); transform: translateX(5px); background: rgba(255, 90, 60, 0.06); }
+.q-contact__row i {
+    background: var(--grad-soft);
+    border: 1px solid rgba(255, 90, 60, 0.3);
+    color: var(--c1);
+    width: 44px; height: 44px;
+    display: grid; place-items: center;
+    font-size: 1.2rem; border-radius: 12px; font-style: normal;
+}
+.q-contact__label { color: var(--faint); font-size: 0.78rem; letter-spacing: 0.16em; }
+.q-contact__value { color: #fff; font-weight: 500; }
+.q-contact__qrs { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.q-contact__qr {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.3rem;
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.q-contact__qr:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5); }
+.q-contact__qr img, .q-contact__qr-ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+.q-contact__qr-ph { display: grid; place-items: center; background: var(--bg-2); color: var(--faint); font-size: 0.85rem; }
+.q-contact__qr span { color: var(--muted); display: block; margin-top: 0.7rem; font-size: 0.85rem; }
+.q-contact__btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+/* ---------- 12. Product / solution cards ---------- */
+.q-head-row, .head-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; margin-bottom: 2.6rem; flex-wrap: wrap; }
+.q-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6rem; }
+.q-card, .q-news__item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.q-card:hover, .q-news__item:hover {
+    border-color: rgba(255, 90, 60, 0.5);
+    transform: translateY(-6px);
+    box-shadow: 0 22px 50px rgba(255, 90, 60, 0.16);
+}
+.q-card__thumb { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--bg-2); }
+.q-card__thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease; }
+.q-card:hover .q-card__thumb img { transform: scale(1.08); }
+.q-card__thumb--ph { display: grid; place-items: center; background: linear-gradient(150deg, #1a1f29, #0c0f15); }
+.q-card__thumb--ph svg { width: 44px; height: 44px; color: rgba(255, 90, 60, 0.5); }
+.q-card__body { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+.q-card__cat { font-family: var(--mono, monospace); font-size: 11.5px; letter-spacing: 0.14em; color: var(--c1); text-transform: uppercase; }
+.q-card__title { color: #fff; font-weight: 700; font-size: 1.1rem; line-height: 1.45; }
+.q-card:hover .q-card__title { color: var(--c2); }
+.q-card__desc { color: var(--muted); font-size: 0.9rem; line-height: 1.75; }
+.q-card__meta { margin-top: auto; display: flex; justify-content: space-between; color: var(--faint); font-size: 0.8rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+
+/* ---------- 13. News ---------- */
+.q-news { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem; }
+.q-news__thumb { position: relative; aspect-ratio: 16/9; overflow: hidden; background: var(--bg-2); }
+.q-news__thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s; }
+.q-news__item:hover .q-news__thumb img { transform: scale(1.08); }
+.q-news__thumb--ph { display: grid; place-items: center; background: linear-gradient(150deg, #1a1f29, #0c0f15); }
+.q-news__thumb--ph svg { width: 36px; height: 36px; color: rgba(76, 201, 240, 0.45); }
+.q-news__date { position: absolute; top: 12px; left: 12px; background: rgba(8,10,14,0.7); color: #fff; font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; backdrop-filter: blur(4px); }
+.q-news__body { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
+.q-news__title { color: #fff; font-weight: 700; font-size: 1.08rem; line-height: 1.45; }
+.q-news__item:hover .q-news__title { color: var(--c1); }
+.q-news__desc { color: var(--muted); font-size: 0.88rem; }
+.q-news__foot { margin-top: auto; display: flex; justify-content: space-between; color: var(--faint); font-size: 0.78rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+.q-more { color: var(--c2); font-weight: 600; letter-spacing: 0.08em; display: inline-flex; align-items: center; gap: 0.4rem; }
+.q-more svg { stroke: var(--c2); }
+
+/* ---------- 14. Ticker ---------- */
+.q-ticker {
+    background: linear-gradient(90deg, #0c0f15, #14181f, #0c0f15);
+    color: var(--c2);
+    border-top: 1px solid rgba(255, 90, 60, 0.18);
+    border-bottom: 1px solid rgba(255, 90, 60, 0.18);
+    overflow: hidden;
+    padding: 1rem 0;
+}
+.q-ticker__track { display: flex; gap: 56px; white-space: nowrap; width: max-content; animation: qMarquee 32s linear infinite; }
+.q-ticker__track span { display: inline-flex; align-items: center; gap: 12px; color: #d7dbe2; font-size: 0.95rem; letter-spacing: 0.18em; }
+.q-ticker__track i { width: 7px; height: 7px; border-radius: 50%; background: var(--c1); box-shadow: 0 0 10px var(--c1); }
+@keyframes qMarquee { to { transform: translateX(-50%); } }
+
+/* ---------- 15. Scenario (compatibility) ---------- */
+.q-scenario { position: relative; }
+.q-scenario__no { color: var(--faint); font-size: 0.78rem; letter-spacing: 0.2em; }
+.q-scenario__pills { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.4rem 0; }
+.q-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 0.4rem 1rem; color: var(--muted); font-size: 0.82rem; }
+.q-point { display: flex; align-items: center; gap: 0.6rem; color: #d7dbe2; margin-bottom: 0.7rem; }
+.q-point svg { color: var(--c1); flex: none; }
+.q-point b { color: var(--c2); }
+
+/* ============================================================
+ * Design notes for AI / developers:
+ * Palette: midnight #0a0c10 / flame #ff5a3c / amber #ffb454 / cyan #4cc9f0
+ * Text: warm white #f3efe9 on dark, accents use --grad
+ * Effects: thread canvas + char reveal + parallax + counters + 3D tilt + slider
+ * Generic for textile mills, garment factories, fabric merchants, OEM/ODM.
+ * ============================================================ */

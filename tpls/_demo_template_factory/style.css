@@ -1,0 +1,436 @@
+/* ============================================================
+ * deyingding 模板 · 家纺工厂「奶油白 · 鼠尾草绿」清新版 v5
+ * 定位：家纺 / 纺织 / 布艺 / 床品 —— 清新、柔和、有质感
+ *
+ * 配色（浅色清新 4 色）：
+ *   奶油白 #faf8f3 底 / 纯白 #fff 卡 / 深暖灰 #33302b 字 / 鼠尾草绿 #7d9471 强调
+ * 文字：深字浅底，对比度 ≥ 12:1，绝对清晰
+ * 动效保留：轮播 + 丝线 + 逐字 + 流光 + 3D（全部适配浅色）
+ * ============================================================ */
+
+/* ---------- 1. 配色 ---------- */
+:root {
+    --c1: #7d9471;        /* 强调色：鼠尾草绿 */
+    --c2: #a9bb99;        /* 浅绿（hover / 高光） */
+    --c3: #5f7353;        /* 深绿 */
+    --surface: #ffffff;   /* 卡片：纯白 */
+    --border: rgba(125, 148, 113, 0.16);
+    --border-strong: rgba(125, 148, 113, 0.45);
+    --text: #33302b;      /* 主文字：深暖灰 */
+    --muted: #8b8377;     /* 次要文字：暖灰棕 */
+    --grad-soft: linear-gradient(135deg, #f4f1e8 0%, #edf0e6 100%);
+}
+
+/* ---------- 2. 全局（奶油白 + 极淡织纹） ---------- */
+html { scroll-behavior: smooth; }
+body {
+    background:
+        radial-gradient(ellipse 90% 55% at 50% -12%, rgba(125, 148, 113, 0.06) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, rgba(125,148,113,0.02) 0 1px, transparent 1px 26px),
+        #faf8f3;
+    color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    font-weight: 300;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+::selection { background: rgba(125, 148, 113, 0.22); color: #fff; }
+
+/* 背景光晕呼吸（浅绿） */
+@keyframes veBreathe {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.9; }
+}
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle 42% 36% at 80% 14%, rgba(125, 148, 113, 0.09) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+    animation: veBreathe 8s ease-in-out infinite;
+}
+
+/* ---------- 3. 首屏 Hero（轮播 / 渐变 + 深字清晰） ---------- */
+.q-hero {
+    position: relative;
+    min-height: 84vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(160deg, #f6f3ea 0%, #f2f0e6 55%, #eef1e6 100%);
+    overflow: hidden;
+}
+.q-hero #ve-threads {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: 0.7;
+}
+.q-hero__copy { position: relative; z-index: 3; }
+.q-hero .q-kicker {
+    color: var(--c3);
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+.q-hero .q-kicker::before {
+    content: "";
+    width: 32px;
+    height: 2px;
+    background: var(--c1);
+}
+.q-hero__title {
+    font-size: clamp(2.6rem, 6vw, 4.4rem);
+    font-weight: 200;
+    line-height: 1.16;
+    color: #2a2a26;
+    letter-spacing: 0.04em;
+    margin: 1.8rem 0;
+}
+.q-hero__title .ve-char {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(26px) rotate(4deg);
+    transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.3, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
+    transition-delay: var(--d, 0ms);
+}
+.q-hero__title.in .ve-char { opacity: 1; transform: none; }
+.q-hero__title em { color: var(--c3); font-style: normal; font-weight: 300; }
+.q-hero__sub {
+    color: #6f695e;
+    font-size: 1.12rem;
+    max-width: 34em;
+    line-height: 2;
+    opacity: 0;
+    transform: translateY(18px);
+    animation: veFadeUp 0.9s ease forwards 0.9s;
+}
+@keyframes veFadeUp { to { opacity: 1; transform: none; } }
+.q-hero__cta { margin-top: 2.8rem; opacity: 0; animation: veFadeUp 0.9s ease forwards 1.1s; }
+.q-hero__cta .q-btn {
+    background: linear-gradient(135deg, var(--c2) 0%, var(--c1) 60%, var(--c3) 100%);
+    color: #fff;
+    font-weight: 700;
+    padding: 0.95rem 3rem;
+    border-radius: 2px;
+    letter-spacing: 0.2em;
+    box-shadow: 0 10px 26px rgba(125, 148, 113, 0.3);
+    animation: veBtnPulse 3s ease-in-out infinite;
+}
+@keyframes veBtnPulse {
+    0%, 100% { box-shadow: 0 10px 26px rgba(125, 148, 113, 0.28); }
+    50% { box-shadow: 0 10px 42px rgba(125, 148, 113, 0.5), 0 0 0 6px rgba(125, 148, 113, 0.07); }
+}
+.q-hero__cta .q-btn:hover { transform: translateY(-2px); }
+.q-hero__tags { margin-top: 2.6rem; display: flex; flex-wrap: wrap; gap: 1.6rem; opacity: 0; animation: veFadeUp 0.9s ease forwards 1.3s; }
+.q-hero__tags span {
+    background: none; border: none; padding: 0 0 6px;
+    color: #8b8377; font-size: 0.85rem; letter-spacing: 0.14em;
+    border-bottom: 2px solid rgba(125, 148, 113, 0.35);
+}
+.q-hero__tags span b { color: var(--c3); font-weight: 600; }
+#net, .scanline, .glow { display: none !important; }
+
+/* ---------- 3.1 轮播（清新：白色遮罩 + 深字） ---------- */
+.q-hero__mask {
+    background: linear-gradient(90deg, rgba(250, 248, 243, 0.92) 0%, rgba(250, 248, 243, 0.62) 55%, rgba(250, 248, 243, 0.15) 100%);
+}
+.q-hero__dots button { background: rgba(125, 148, 113, 0.35); border-radius: 0; }
+.q-hero__dots button.on {
+    background: linear-gradient(90deg, var(--c2), var(--c1));
+    width: 54px;
+    box-shadow: 0 0 8px rgba(125, 148, 113, 0.45);
+}
+@media (max-width: 640px) {
+    .q-hero__mask { background: linear-gradient(180deg, rgba(250,248,243,.9) 0%, rgba(250,248,243,.62) 55%, rgba(250,248,243,.88) 100%); }
+}
+
+/* ---------- 4. 通用按钮（绿色系） ---------- */
+.q-btn--grad, .q-btn {
+    background: linear-gradient(135deg, var(--c2) 0%, var(--c1) 60%, var(--c3) 100%);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    padding: 0.85rem 2.6rem;
+    box-shadow: 0 8px 22px rgba(125, 148, 113, 0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.q-btn--grad:hover, .q-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(125, 148, 113, 0.35); }
+.q-btn--ghost {
+    background: transparent;
+    border: 1px solid rgba(125, 148, 113, 0.55);
+    color: var(--c3);
+    border-radius: 2px;
+    box-shadow: none;
+}
+.q-btn--ghost:hover { background: rgba(125, 148, 113, 0.08); border-color: var(--c1); color: var(--c1); }
+
+/* ---------- 5. 通用区块 ---------- */
+.q-section { padding: 7rem 0; position: relative; z-index: 1; }
+.q-kicker {
+    color: var(--c3);
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+}
+.q-title {
+    color: #2a2a26;
+    font-weight: 300;
+    font-size: clamp(1.8rem, 3.4vw, 2.8rem);
+    letter-spacing: 0.04em;
+    margin: 1.2rem 0 1.6rem;
+    padding-bottom: 1.5rem;
+    position: relative;
+}
+.q-title::after {
+    content: "";
+    position: absolute; left: 0; bottom: 0;
+    width: 56px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c1) 40%, var(--c2) 60%, transparent);
+    background-size: 200% 100%;
+    animation: veGreenFlow 3.2s linear infinite;
+}
+@keyframes veGreenFlow {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.q-title em { font-weight: 400; color: var(--c3); font-style: normal; }
+.q-desc { color: var(--muted); font-size: 1.05rem; line-height: 2; max-width: 44em; }
+
+/* 入场动画 */
+.q-reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.8s cubic-bezier(0.2,0.7,0.3,1), transform 0.8s cubic-bezier(0.2,0.7,0.3,1); }
+.q-reveal.is-visible { opacity: 1; transform: none; }
+.q-reveal[data-dir="left"] { transform: translateX(-36px); }
+.q-reveal[data-dir="right"] { transform: translateX(36px); }
+.q-reveal[data-dir="scale"] { transform: scale(0.92); }
+.q-reveal[data-dir="left"].is-visible, .q-reveal[data-dir="right"].is-visible, .q-reveal[data-dir="scale"].is-visible { transform: none; }
+
+/* ---------- 6. 数据统计（浅色卡 + 绿色大数字） ---------- */
+.q-stats .q-stat {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--c1);
+    border-radius: 10px;
+    padding: 2.2rem 1.4rem;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(80, 90, 70, 0.05);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.q-stats .q-stat:hover { transform: translateY(-5px); box-shadow: 0 16px 36px rgba(80, 90, 70, 0.12); }
+.q-stats .q-stat__num {
+    color: var(--c3);
+    font-size: 3.2rem;
+    font-weight: 300;
+    font-family: "Bahnschrift", "DIN Alternate", "Arial Narrow", sans-serif;
+    letter-spacing: 0.02em;
+}
+.q-stats .q-stat__num::after {
+    content: "";
+    display: block; width: 32px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--c1));
+    margin: 1rem auto 0.8rem;
+}
+.q-stats .q-stat__label { color: var(--muted); font-size: 0.95rem; letter-spacing: 0.08em; }
+
+/* ---------- 7. 核心能力（白卡 + 绿色图标） ---------- */
+.q-feat {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.4rem 1.8rem;
+    box-shadow: 0 6px 20px rgba(80, 90, 70, 0.05);
+    transform-style: preserve-3d;
+    transition: transform 0.35s cubic-bezier(0.2,0.7,0.3,1), border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+.q-feat:hover {
+    border-color: rgba(125, 148, 113, 0.45);
+    box-shadow: 0 22px 44px rgba(80, 90, 70, 0.13);
+    z-index: 2;
+}
+.q-feat::before {
+    content: "";
+    position: absolute; top: 0; left: -100%;
+    width: 100%; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--c1), var(--c2), transparent);
+    transition: left 0.6s ease;
+}
+.q-feat:hover::before { left: 0; }
+.q-feat__idx {
+    background: rgba(125, 148, 113, 0.1);
+    color: var(--c3);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.22em;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    display: inline-block;
+}
+.q-feat__ico {
+    background: linear-gradient(135deg, rgba(125,148,113,0.14), rgba(125,148,113,0.03));
+    color: var(--c3);
+    border: 1px solid rgba(125, 148, 113, 0.35);
+    border-radius: 8px;
+    transition: transform 0.3s;
+}
+.q-feat:hover .q-feat__ico { transform: scale(1.08) rotate(-3deg); }
+.q-feat h3 { color: #2a2a26; font-weight: 500; font-size: 1.2rem; margin: 1.2rem 0 0.6rem; letter-spacing: 0.06em; }
+.q-feat p { color: var(--muted); font-size: 0.95rem; line-height: 1.85; }
+.q-feat__cta { text-align: center; margin-top: 3rem; }
+
+/* ---------- 8. 关于我们 ---------- */
+.q-split__list li {
+    color: #5f5a52;
+    padding-left: 1.3rem;
+    margin-bottom: 0.95rem;
+    position: relative;
+    border: none;
+}
+.q-split__list li::before {
+    content: "";
+    position: absolute; left: 0; top: 0.5em;
+    width: 7px; height: 7px;
+    background: var(--c1);
+    transform: rotate(45deg);
+}
+.q-split__list li svg { display: none; }
+
+/* ---------- 9. 服务流程 ---------- */
+.q-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.6rem; }
+.q-flow__step {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.8rem 1.4rem;
+    box-shadow: 0 6px 18px rgba(80, 90, 70, 0.05);
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.q-flow__step:hover { border-color: rgba(125, 148, 113, 0.45); transform: translateY(-4px); box-shadow: 0 14px 30px rgba(80, 90, 70, 0.1); }
+.q-flow__num {
+    background: linear-gradient(135deg, var(--c2), var(--c1));
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 600;
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    font-family: "Bahnschrift", "DIN Alternate", sans-serif;
+}
+.q-flow__step h3 { color: #2a2a26; font-weight: 500; font-size: 1.1rem; margin: 1rem 0 0.5rem; letter-spacing: 0.08em; }
+.q-flow__step p { color: var(--muted); font-size: 0.92rem; line-height: 1.8; }
+
+/* ---------- 10. 底部 CTA（白卡 + 绿色光晕） ---------- */
+.q-cta {
+    background: linear-gradient(160deg, #ffffff, #f4f1e8);
+    border: 1px solid rgba(125, 148, 113, 0.25);
+    border-radius: 16px;
+    padding: 4.5rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(80, 90, 70, 0.08);
+}
+.q-cta::before {
+    content: "";
+    position: absolute; top: 50%; left: 50%;
+    width: 460px; height: 460px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(125, 148, 113, 0.1) 0%, transparent 62%);
+    animation: veBreathe 6s ease-in-out infinite;
+    pointer-events: none;
+}
+.q-cta::after {
+    content: "";
+    position: absolute; top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--c1), transparent);
+    background-size: 200% 100%;
+    animation: veGreenFlow 3s linear infinite;
+}
+.q-cta h2 { color: #2a2a26; font-size: clamp(1.6rem, 3vw, 2.4rem); font-weight: 300; letter-spacing: 0.06em; position: relative; }
+.q-cta p { color: var(--muted); margin: 1.2rem 0 2.4rem; position: relative; }
+.q-cta__row { display: flex; justify-content: center; gap: 1.2rem; flex-wrap: wrap; position: relative; }
+
+/* ---------- 11. 联系我们（白卡） ---------- */
+.q-contact {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 3.5rem 2.8rem;
+    box-shadow: 0 8px 30px rgba(80, 90, 70, 0.06);
+}
+.q-contact .q-kicker { color: var(--c3); }
+.q-contact .q-title { color: #2a2a26; }
+.q-contact .q-desc { color: var(--muted); }
+.q-contact__row {
+    background: #faf8f3;
+    border: 1px solid rgba(125, 148, 113, 0.12);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.8rem;
+    transition: border-color 0.3s, transform 0.3s, background 0.3s;
+}
+.q-contact__row:hover { border-color: rgba(125, 148, 113, 0.4); transform: translateX(4px); background: #f4f8ef; }
+.q-contact__row i {
+    background: linear-gradient(135deg, rgba(125,148,113,0.14), rgba(125,148,113,0.03));
+    border: none;
+    color: var(--c3);
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+.q-contact__label { color: #9a9387; font-size: 0.8rem; letter-spacing: 0.16em; }
+.q-contact__value { color: #3a372f; font-weight: 400; }
+.q-contact__qr {
+    background: #faf8f3;
+    border: 1px solid rgba(125, 148, 113, 0.14);
+    border-radius: 12px;
+    padding: 1.2rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.q-contact__qr:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(80, 90, 70, 0.1); }
+.q-contact__qr span { color: #9a9387; }
+.q-contact__btns { margin-top: 2rem; }
+
+/* ---------- 12. 滚动字幕（浅色） ---------- */
+.q-ticker {
+    background: linear-gradient(90deg, #f4f1e8, #eef1e6);
+    color: var(--c3);
+    border-top: 1px solid rgba(125, 148, 113, 0.18);
+    border-bottom: 1px solid rgba(125, 148, 113, 0.18);
+}
+.q-ticker span i { background: var(--c1); box-shadow: 0 0 8px rgba(125, 148, 113, 0.5); }
+
+/* ---------- 13. 产品 / 新闻卡片 ---------- */
+.q-card, .q-news__item {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(80, 90, 70, 0.05);
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+.q-card:hover, .q-news__item:hover {
+    border-color: rgba(125, 148, 113, 0.45);
+    transform: translateY(-5px);
+    box-shadow: 0 18px 40px rgba(80, 90, 70, 0.12);
+}
+.q-card h3, .q-news__item h3 { color: #2a2a26; font-weight: 500; }
+.q-card p, .q-news__item p { color: var(--muted); }
+.q-more { color: var(--c3); font-weight: 500; letter-spacing: 0.1em; }
+.q-more svg { stroke: var(--c3); }
+
+/* ============================================================
+ * 设计说明（给 AI / 后续开发者）：
+ * 配色 4 色：奶油白 #faf8f3 / 纯白 #fff / 深暖灰 #33302b / 鼠尾草绿 #7d9471
+ * 文字：深字浅底（对比度 ≥ 12:1）—— 清新且清晰
+ * 动效 = 轮播 + 绿色丝线 + 标题逐字 + 绿色流光 + 3D 卡片
+ * ============================================================ */

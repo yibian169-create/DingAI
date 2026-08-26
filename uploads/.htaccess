@@ -1,0 +1,7 @@
+# 禁止在上传目录执行任何脚本（含 php/html/js/css），仅允许浏览器以附件形式下载
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht|html?|js|css|svg)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "\.(exe|bat|cmd|sh|com)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0c10"/>
+      <stop offset="0.6" stop-color="#120a08"/>
+      <stop offset="1" stop-color="#1a0f0a"/>
+    </linearGradient>
+    <linearGradient id="glow1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a3c" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ff5a3c" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="thread1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a3c" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#ff5a3c" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#ffb454" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg1)"/>
+  <!-- 背景网格 -->
+  <g stroke="rgba(255,255,255,0.04)" stroke-width="1">
+    <line x1="0" y1="150" x2="1600" y2="150"/><line x1="0" y1="300" x2="1600" y2="300"/>
+    <line x1="0" y1="450" x2="1600" y2="450"/><line x1="0" y1="600" x2="1600" y2="600"/>
+    <line x1="0" y1="750" x2="1600" y2="750"/>
+  </g>
+  <!-- 大织轴剪影 -->
+  <g transform="translate(980,220)" opacity="0.9">
+    <rect x="0" y="0" width="340" height="460" rx="170" fill="none" stroke="#2a1d18" stroke-width="3"/>
+    <rect x="40" y="40" width="260" height="380" rx="130" fill="none" stroke="#3a2820" stroke-width="2"/>
+    <line x1="170" y1="0" x2="170" y2="460" stroke="#2a1d18" stroke-width="2"/>
+    <line x1="0" y1="230" x2="340" y2="230" stroke="#2a1d18" stroke-width="2"/>
+    <!-- 纱线 -->
+    <g stroke="url(#thread1)" stroke-width="1.5" fill="none">
+      <path d="M-60 80 Q 170 120 400 60"/>
+      <path d="M-40 180 Q 170 220 420 160"/>
+      <path d="M-50 280 Q 170 320 410 260"/>
+      <path d="M-30 380 Q 170 420 430 360"/>
+    </g>
+  </g>
+  <!-- 机器臂剪影 -->
+  <path d="M200 900 L260 520 L360 520 L400 900 Z" fill="#16181d" opacity="0.85"/>
+  <rect x="245" y="480" width="130" height="60" rx="8" fill="#1e2128"/>
+  <circle cx="310" cy="510" r="14" fill="#ff5a3c" opacity="0.6"/>
+  <!-- 左侧光晕 -->
+  <ellipse cx="280" cy="450" rx="380" ry="420" fill="url(#glow1)" opacity="0.7"/>
+  <!-- 顶部装饰线 -->
+  <g stroke="#ffb454" stroke-width="2" stroke-opacity="0.25" fill="none">
+    <path d="M1200 0 Q 1300 200 1250 400"/>
+    <path d="M1350 0 Q 1450 220 1380 420"/>
+  </g>
+  <!-- 前景文字 -->
+  <text x="90" y="760" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="96" font-weight="900" fill="#ffffff" opacity="0.95">纺纱 · 织造</text>
+  <text x="94" y="820" font-family="Microsoft YaHei, sans-serif" font-size="40" fill="#ffb454" opacity="0.9">SPINNING &amp; WEAVING</text>
+</svg>
