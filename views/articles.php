@@ -157,6 +157,7 @@
               <button type="button" class="btn btn-s" onclick="aiBatchIllustrate()">✨ AI 批量配图</button>
             </div>
           </div>
+          <div id="queueTip" style="margin-bottom:8px;font-size:12.5px;color:var(--muted)"></div>
           <div id="batchStatus" class="note" style="display:none;margin-bottom:10px"></div>
           <table>
             <thead><tr><th style="width:60px">ID</th><th>标题</th><th style="width:110px">栏目</th><th style="width:90px">推荐</th><th style="width:90px">状态</th><th style="width:80px">浏览</th><th style="width:110px">时间</th><th style="width:260px">操作</th></tr></thead>
@@ -377,27 +378,21 @@ function aiIllustrate(){
   var st=document.getElementById('illustrateStatus');
   if(!st){ return; }
   if(!fid || fid==='0'){ st.textContent='⚠ 请先点「💾 保存文章」把文章存起来，再配图'; return; }
-  if(!confirm('为当前文章生成 2 张 AI 插图并插入正文？\n（约 30~120 秒，期间请勿关闭页面）')) return;
+  if(!confirm('为当前文章生成 2 张 AI 插图并插入正文？\n已加入后台队列自动处理（约 1 分钟/篇），无需等待。')) return;
   var btn=document.querySelector('#illustrateBtn');
   if(btn) btn.disabled=true;
-  st.textContent='⏳ 正在生成插图（约 30~120 秒）…';
+  st.textContent='⏳ 正在加入队列…';
   var fd=new FormData();
   fd.append('article_id', fid);
   fd.append('count', '2');
   fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
     if(btn) btn.disabled=false;
     if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
-    if(r.img_count>0){
-      QEditor.set('f_content', r.content);
-      if(r.cover) document.getElementById('f_cover').value=r.cover;
-      st.textContent='✅ 已插入 '+r.img_count+' 张插图（正文与封面已更新）';
-    } else {
-      st.textContent='⚠ 插图失败：'+r.img_err;
-    }
+    st.textContent='✅ '+(r.msg||'已加入配图队列')+'；稍后刷新文章列表即可看到插图';
   }).catch(e=>{ if(btn) btn.disabled=false; st.textContent='⚠ 请求失败：'+e.message; });
 }
 
-/* ---------- 列表侧 AI 批量配图（自动检测未配图文章，逐篇补插图） ---------- */
+/* ---------- 列表侧 AI 批量配图（自动检测未配图文章，批量加入队列） ---------- */
 function aiBatchIllustrate(){
   var st=document.getElementById('batchStatus');
   if(!st) return;
@@ -407,39 +402,49 @@ function aiBatchIllustrate(){
     if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
     var list=r.list||[];
     if(list.length===0){ st.textContent='✅ 所有文章都已配图，无需处理'; return; }
-    if(!confirm('检测到 '+list.length+' 篇未配图的文章，将逐篇生成 2 张 AI 插图并插入正文。\n每篇约 30~120 秒，全部完成预计 '+Math.ceil(list.length*1.5)+' 分钟。\n期间请勿关闭页面，继续？')){
+    if(!confirm('检测到 '+list.length+' 篇未配图文章，将全部加入 AI 配图队列。\n系统会在后台自动逐篇处理（约 1 分钟/篇），不占用当前操作。\n继续？')){
       st.textContent='已取消（'+list.length+' 篇未配图）'; return;
     }
     var i=0, okN=0, failN=0;
     (function next(){
       if(i>=list.length){
-        st.textContent='🎉 完成：成功 '+okN+' 篇，失败 '+failN+' 篇'+(failN?'（失败原因见上文状态）':'');
+        st.textContent='🎉 已提交 '+okN+' 篇'+(failN?'（跳过 '+failN+' 篇：已在队列/失败）':'')+'。系统将自动逐篇配图，稍后刷新列表查看';
         return;
       }
       var a=list[i++];
-      st.textContent='⏳ ['+i+'/'+list.length+'] 正在为《'+a.title+'》配图…';
+      st.textContent='⏳ 提交进度 ['+i+'/'+list.length+']《'+a.title+'》…';
       var fd=new FormData(); fd.append('article_id',a.id); fd.append('count','2');
       fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
-        if(r.ok && r.img_count>0){ okN++; st.textContent='✅ ['+i+'/'+list.length+'] 《'+a.title+'》已插入 '+r.img_count+' 张'; }
-        else { failN++; st.textContent='⚠ ['+i+'/'+list.length+'] 《'+a.title+'》失败：'+(r.msg||r.img_err||'未知原因'); }
+        if(r.ok){ okN++; } else { failN++; }
         next();
-      }).catch(e=>{ failN++; st.textContent='⚠ ['+i+'/'+list.length+'] 《'+a.title+'》请求失败：'+e.message; next(); });
+      }).catch(e=>{ failN++; next(); });
     })();
   }).catch(e=>{ st.textContent='⚠ 请求失败：'+e.message; });
 }
 
-/* ---------- 列表行单篇 AI 配图 ---------- */
+/* ---------- 列表行单篇 AI 配图（入队） ---------- */
 function aiIllustrateOne(btn){
   var id=btn.getAttribute('data-id');
   var title=btn.getAttribute('data-title')||'该文章';
-  if(!confirm('为《'+title+'》生成 2 张 AI 插图并插入正文？')) return;
+  if(!confirm('为《'+title+'》生成 2 张 AI 插图？\n已加入后台队列自动处理，无需等待。')) return;
   btn.disabled=true; var old=btn.textContent; btn.textContent='⏳';
   var fd=new FormData(); fd.append('article_id',id); fd.append('count','2');
   fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
     btn.disabled=false; btn.textContent=old;
-    alert(r.ok && r.img_count>0 ? '✅《'+title+'》已插入 '+r.img_count+' 张插图' : '⚠ '+(r.msg||r.img_err||'配图失败'));
+    alert(r.ok ? '✅ '+(r.msg||'已加入配图队列，稍后刷新查看') : '⚠ '+r.msg);
   }).catch(e=>{ btn.disabled=false; btn.textContent=old; alert('请求失败：'+e.message); });
 }
+
+/* ---------- 配图队列状态提示（页面加载时显示待处理数量） ---------- */
+(function loadQueueTip(){
+  var el=document.getElementById('queueTip');
+  if(!el) return;
+  fetch('admin.php?m=ai_img_queue').then(r=>r.json()).then(r=>{
+    if(!r || !('pending' in r)) return;
+    var n=(r.pending||0)+(r.doing||0);
+    if(n>0){ el.textContent='📋 配图队列：待处理 '+r.pending+' 篇'+(r.doing>0?'，处理中 '+r.doing+' 篇':'')+'（后台自动处理中）'; }
+  }).catch(function(){});
+})();
 
 /* ---------- AI SEO / GEO 共用接口 ---------- */
 function aiSeo(type){

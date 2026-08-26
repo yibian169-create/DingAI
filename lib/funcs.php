@@ -1523,6 +1523,71 @@ function ai_unillustrated_articles(int $limit = 100): array
     return $out;
 }
 
+/** ============ AI 配图异步队列（避免生图长请求占住 PHP-FPM worker 导致后台卡死） ============ */
+function ai_img_queue_ensure_table(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        DB::run("CREATE TABLE IF NOT EXISTS ai_img_queue (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            site_id INT UNSIGNED NOT NULL DEFAULT 0,
+            article_id INT UNSIGNED NOT NULL,
+            count TINYINT NOT NULL DEFAULT 2,
+            status VARCHAR(10) NOT NULL DEFAULT 'pending',
+            err VARCHAR(500) NOT NULL DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_status (status),
+            KEY idx_art (article_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) {
+    }
+}
+
+/** 入队：给一篇文章排队配图（立即返回，不占请求线程）。重复 pending/doing 任务会合并 */
+function ai_img_queue_add(int $articleId, int $count = 2): array
+{
+    ai_img_queue_ensure_table();
+    $sid = current_site_id();
+    $exists = DB::one('SELECT id FROM ai_img_queue WHERE site_id=? AND article_id=? AND status IN (?,?) LIMIT 1', [$sid, $articleId, 'pending', 'doing']);
+    if ($exists) {
+        return ['ok' => true, 'msg' => '该文章已有配图任务在排队/处理中'];
+    }
+    DB::insert('INSERT INTO ai_img_queue(site_id, article_id, count, status) VALUES(?,?,?,?)', [$sid, $articleId, $count, 'pending']);
+    return ['ok' => true, 'msg' => '已加入配图队列，后台将自动处理（约 1 分钟/篇）'];
+}
+
+/** 处理队列中最早的一篇（pending→doing→done/fail）。返回是否处理了任务 */
+function ai_img_queue_pick_one(): bool
+{
+    ai_img_queue_ensure_table();
+    $row = DB::one('SELECT id, article_id, count FROM ai_img_queue WHERE status=? ORDER BY id ASC LIMIT 1', ['pending']);
+    if (!$row) {
+        return false;
+    }
+    DB::run('UPDATE ai_img_queue SET status=? WHERE id=?', ['doing', $row['id']]);
+    $r = ai_illustrate_article((int)$row['article_id'], (int)$row['count']);
+    if ($r['ok'] && $r['img_count'] > 0) {
+        DB::run('UPDATE ai_img_queue SET status=?, err=? WHERE id=?', ['done', '', $row['id']]);
+    } else {
+        $err = $r['img_err'] ?: ($r['msg'] ?? '配图失败');
+        DB::run('UPDATE ai_img_queue SET status=?, err=? WHERE id=?', ['fail', mb_substr((string)$err, 0, 300), $row['id']]);
+    }
+    return true;
+}
+
+/** 队列状态：待处理数 + 最近完成/失败记录 */
+function ai_img_queue_stats(): array
+{
+    ai_img_queue_ensure_table();
+    $pending = (int)DB::one('SELECT COUNT(*) AS n FROM ai_img_queue WHERE status=?', ['pending'])['n'];
+    $doing   = (int)DB::one('SELECT COUNT(*) AS n FROM ai_img_queue WHERE status=?', ['doing'])['n'];
+    $recent  = DB::all('SELECT article_id, status, err, updated_at FROM ai_img_queue WHERE status IN (?,?) ORDER BY id DESC LIMIT 10', ['done', 'fail']);
+    return ['pending' => $pending, 'doing' => $doing, 'recent' => $recent];
+}
+
 /**
  * 网页伪 Cron：前台访问时检查是否到自动发文时间点，到则生成并发布一篇。
  * 防重复：ai_post_log 记录今日已用关键词；关键词池循环。

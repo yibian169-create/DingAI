@@ -16,6 +16,7 @@ require_once __DIR__ . '/lib/funcs.php';
 ensure_schema(); // 旧库自动升级（users 表 + site_id 列）
 track_visit();   // 记录访问日志（IP / 地域 / 设备 / 来源）
 maybe_auto_post(); // 网页伪 Cron：到点自动 AI 写文并发布（无需宝塔计划任务）
+ai_img_queue_pick_one(); // 网页伪 Cron：每次前台访问处理 1 篇配图队列任务（兜底，无宝塔计划任务也能跑）
 geo_monitor_maybe_run(); // 网页伪 Cron：启用后每日自动对若干文章跑 GEO 探针（检测是否被 AI 引用）
 
 $act  = $_GET['act'] ?? 'home';
