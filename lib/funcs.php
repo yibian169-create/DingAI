@@ -1359,6 +1359,9 @@ function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt)
  */
 function ai_build_article(string $topic, int $words, string $tone, string $extra, bool $withImg, bool $doSeo = true, bool $doGeo = true): array
 {
+    // 写文 + 2 次生图（单次最多 120s）+ SEO/GEO 一起可能 > 30s 默认 max_execution_time，
+    // 进程被 kill 会导致浏览器 fetch 报 "Failed to fetch"。本函数内放开限制。
+    @set_time_limit(0);
     $apiUrl = setting('ai_api_url', '');
     $apiKey = setting('ai_api_key', '');
     $model  = setting('ai_model', 'deepseek-chat');
