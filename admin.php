@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_plan_run', 'city_notice', 'city_save', 'city_del', 'city_clear_tdk', 'city_clear_all',
+    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_content_run', 'city_content_save', 'city_clear_content', 'city_notice', 'city_save', 'city_del', 'city_clear_tdk', 'city_clear_all',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -1115,42 +1115,79 @@ if ($m === 'ai_city_tdk_one') {
         exit;
     }
 }
-if ($m === 'city_plan_run') {
+if ($m === 'city_content_run') {
+    // ===== 全国分站内容重构（2025）：写回分站表，不写 articles =====
     require_admin();
     if (function_exists('ob_start')) { @ob_start(); }
     header('Content-Type: application/json; charset=utf-8');
     $cityId   = (int)($_POST['city_id'] ?? 0);
-    $kw       = trim((string)($_POST['kw'] ?? '')); // 关键词池混发：每城前端轮询传入不同的词
     $industry = trim((string)($_POST['industry'] ?? ''));
-    if ($kw !== '') { $industry = $kw; }
     if ($industry === '') { $industry = '网站建设'; }
+    $force    = (int)($_POST['force'] ?? 0); // 1 = 强制重生成（不管 content_status）
+    $words    = (int)($_POST['words'] ?? 1200);
+
     $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=? AND status=1', [$cityId, $sid]);
     if (!$city) {
         echo json_encode(['ok' => false, 'msg' => '城市不存在或已停用']);
         if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
-    $dup = DB::one('SELECT COUNT(*) AS n FROM articles WHERE site_id=? AND title LIKE ?', [$sid, '%' . $city['city'] . $industry . '%']);
-    if ((int)$dup['n'] > 0) {
-        echo json_encode(['ok' => false, 'dup' => true, 'msg' => $city['city'] . ' 已有相关文章，跳过']);
+    $existingContent = trim((string)($city['content'] ?? ''));
+    // 精确去重：content_status=1 + content 非空 → 跳过（不再 LIKE 模糊匹配 articles 表）
+    if (!$force && (int)$city['content_status'] === 1 && $existingContent !== '') {
+        echo json_encode([
+            'ok' => false, 'dup' => true,
+            'msg' => $city['city'] . ' 已生成分站内容（' . (string)$city['content_at'] . '），跳过',
+            'content_status' => 1,
+            'content_title' => (string)$city['content_title'],
+        ]);
         if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
-    $topic = $city['city'] . $industry;
-    $r = ai_build_article($topic, 1200, '亲切实战', $city['city'] . '本地化服务', false, true, false);
+    // 标记「生成中」便于 UI 实时状态（断线也能查到）
+    DB::run('UPDATE city_sites SET content_status=2, content_err=? WHERE id=? AND site_id=?', ['生成中…', $cityId, $sid]);
+    $r = ai_city_content($city['city'], $industry, $words);
     if (!$r['ok']) {
-        echo json_encode(['ok' => false, 'msg' => '生成失败：' . $r['msg']]);
+        DB::run('UPDATE city_sites SET content_status=3, content_err=? WHERE id=? AND site_id=?', [mb_substr($r['msg'] ?? '未知原因', 0, 200), $cityId, $sid]);
+        echo json_encode(['ok' => false, 'msg' => 'AI 生成失败：' . ($r['msg'] ?? ''), 'content_status' => 3]);
         if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
-    $catId   = (int)setting('ai_plan_cat', 0);
-    $summary = mb_substr(strip_tags($r['content']), 0, 80);
-    DB::insert('INSERT INTO articles(site_id,cat_id,title,summary,cover,content,tags,recommend,status,seo_title,seo_keywords,seo_description,geo_summary,geo_faq) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        [$sid, $catId, $r['title'], $summary, $r['cover'], $r['content'], $topic, 0, 1,
-         $r['seo_title'] ?? '', $r['seo_keywords'] ?? '', $r['seo_description'] ?? '',
-         $r['geo_summary'] ?? '', $r['geo_faq'] ?? '']);
-    DB::run('INSERT INTO ai_post_log(site_id,keyword,model,has_image) VALUES(?,?,?,?)', [$sid, $topic, setting('ai_model', 'deepseek-chat'), $r['img_count'] > 0 ? 1 : 0]);
-    echo json_encode(['ok' => true, 'msg' => '已生成《' . $r['title'] . '》', 'title' => $r['title']]);
+    // 落库：直接写回 city_sites.content（不走 articles 表）
+    DB::run('UPDATE city_sites SET content_title=?, content=?, content_at=NOW(), content_status=1, content_err=? WHERE id=? AND site_id=?',
+        [$r['title'], $r['content'], '', $cityId, $sid]);
+    echo json_encode([
+        'ok' => true,
+        'msg' => '已生成《' . $r['title'] . '》',
+        'title' => $r['title'],
+        'content_status' => 1,
+    ]);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+    exit;
+}
+if ($m === 'city_content_save') {
+    // 手工保存分站内容（含编辑/清空）
+    require_admin();
+    if (function_exists('ob_start')) { @ob_start(); }
+    header('Content-Type: application/json; charset=utf-8');
+    $cityId = (int)($_POST['city_id'] ?? 0);
+    $title  = trim((string)($_POST['content_title'] ?? ''));
+    $content = (string)($_POST['content'] ?? '');
+    if ($cityId <= 0) {
+        echo json_encode(['ok' => false, 'msg' => '城市 ID 缺失']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    if ($content === '') {
+        // 清空（彻底重置）
+        DB::run('UPDATE city_sites SET content_title=?, content=?, content_at=NULL, content_status=0, content_err=? WHERE id=? AND site_id=?',
+            ['', '', '', $cityId, $sid]);
+        echo json_encode(['ok' => true, 'msg' => '已清空分站内容']);
+    } else {
+        DB::run('UPDATE city_sites SET content_title=?, content=?, content_at=NOW(), content_status=1, content_err=? WHERE id=? AND site_id=?',
+            [$title, $content, '', $cityId, $sid]);
+        echo json_encode(['ok' => true, 'msg' => '已保存']);
+    }
     if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
 }
@@ -1190,6 +1227,14 @@ if ($m === 'city_clear_tdk') {
     $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
     DB::run('UPDATE city_sites SET title_suffix=?, keywords=?, description=?, tdk_try_at=NULL WHERE site_id=?', ['', '', '', $sid]);
     redirect('admin.php?m=citysites', "已清空 {$n} 个分站的 SEO 字段（城市保留），可立刻重新跑模板版/AI 版生成");
+}
+if ($m === 'city_clear_content') {
+    // ===== 全国分站重构（2025）：清空所有分站的「内容」字段（与 SEO 清空分开）=====
+    require_admin();
+    $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
+    DB::run('UPDATE city_sites SET content_title=?, content=?, content_at=NULL, content_status=0, content_err=? WHERE site_id=?',
+        ['', '', '', $sid]);
+    redirect('admin.php?m=citysites', "已清空 {$n} 个分站的内容（content）字段，可立刻重新跑 AI 内容生成");
 }
 if ($m === 'city_clear_all') {
     require_admin();

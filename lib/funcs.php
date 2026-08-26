@@ -281,7 +281,8 @@ function city_label(): string
     return $city ? '[' . $city['city'] . ']' : '';
 }
 
-/** 一键导入全国分站（内置城市数据，跳过已存在的城市，返回新增数量） */
+/** 一键导入全国分站（内置城市数据，带省份；跳过已存在的城市，返回新增数量）
+ *  数据结构：cities.php 每行为 [省份, 城市名, 拼音]（2025 重构版）—— 兼顾老版 [城市,拼音] 自动识别 */
 function import_national_cities(): int
 {
     $cities = require __DIR__ . '/cities.php';
@@ -292,26 +293,47 @@ function import_national_cities(): int
         $exists[$r['city']] = true;
     }
     $sort = (int)(DB::one('SELECT MAX(sort) AS s FROM city_sites WHERE site_id=?', [$sid])['s'] ?? 0);
-    foreach ($cities as [$name, $pinyin]) {
+    foreach ($cities as $row) {
+        // 兼容两种数据格式：[prov, name, py]（新版）或 [name, py]（旧版）
+        if (count($row) === 3) {
+            [$prov, $name, $pinyin] = $row;
+        } else {
+            [$name, $pinyin] = $row;
+            $prov = '';
+        }
         if (isset($exists[$name])) {
             continue;
         }
         $sort++;
-        DB::insert('INSERT INTO city_sites(site_id,city,pinyin,title_suffix,status,sort) VALUES(?,?,?,?,?,?)',
-            [$sid, $name, $pinyin, '', 1, $sort]);
+        DB::insert('INSERT INTO city_sites(site_id,city,pinyin,province,title_suffix,status,sort) VALUES(?,?,?,?,?,?,?)',
+            [$sid, $name, $pinyin, $prov, '', 1, $sort]);
         $exists[$name] = true;
         $added++;
     }
     return $added;
 }
 
-/** 从内置城市数据查拼音（保存分站时自动补全） */
+/** 从内置城市数据查拼音（保存分站时自动补全；新版 [prov,name,py] 兼容） */
 function city_pinyin(string $city): string
 {
     $cities = require __DIR__ . '/cities.php';
-    foreach ($cities as [$name, $pinyin]) {
+    foreach ($cities as $row) {
+        $name = count($row) === 3 ? $row[1] : $row[0];
         if ($name === $city) {
-            return $pinyin;
+            return count($row) === 3 ? $row[2] : $row[1];
+        }
+    }
+    return '';
+}
+
+/** 从内置城市数据查省份（导入/补齐用；新版 [prov,name,py] 兼容） */
+function city_province(string $city): string
+{
+    $cities = require __DIR__ . '/cities.php';
+    foreach ($cities as $row) {
+        if (count($row) === 3) {
+            [$prov, $name] = $row;
+            if ($name === $city) { return $prov; }
         }
     }
     return '';
@@ -498,6 +520,160 @@ function city_tdk_auto(string $industry = '网站建设'): array
         }
     }
     return ['total' => count($rows), 'updated' => $updated];
+}
+
+/**
+ * AI 生成分站专属内容（重构版 2025 · 不再写 articles 文章表）
+ * --------------------------------------------------------
+ * 旧 bug：之前 `city_plan_run` 把分站内容写进 articles 表，靠 LIKE '%城市名%' 去重 —— 不可靠、导致重复
+ * 新版逻辑：内容**直接写回 city_sites 表**（content/content_title/content_at/content_status），
+ *           去重靠 `content_status=1`，彻底告别"已写过的又重写"
+ *
+ * @param string $cityName 城市名（如「保定」）
+ * @param string $industry 行业词（如「AI 员工培训」）
+ * @param int    $words     正文字数（800~1500）
+ * @return array {ok, title, content, html, msg}
+ */
+function ai_city_content(string $cityName, string $industry = '网站建设', int $words = 1200): array
+{
+    // 缩进/提示：放大 time_limit，避免大段生成被 PHP 默认 30s kill
+    if (function_exists('ini_set')) { @ini_set('max_execution_time', '0'); }
+    if (function_exists('set_time_limit')) { @set_time_limit(0); }
+
+    $apiUrl = (string)setting('ai_api_url', '');
+    $apiKey = (string)setting('ai_api_key', '');
+    $model  = (string)setting('ai_model', 'deepseek-chat');
+    if ($apiUrl === '' || $apiKey === '') {
+        return ['ok' => false, 'msg' => '请先在「API 配置」填写写作 API 地址与密钥'];
+    }
+    $cityName = trim($cityName);
+    if ($cityName === '') {
+        return ['ok' => false, 'msg' => '城市名不能为空'];
+    }
+    $industry = trim($industry) !== '' ? trim($industry) : '网站建设';
+    if (mb_strlen($industry) > 12) {
+        $industry = mb_substr($industry, 0, 12);
+    }
+
+    // 随机写作角度（防模板化，每城独特措辞）
+    $angles = [
+        '本地用户痛点拆解', '上门服务流程揭秘', '行业选型避坑', '成本与性价比对比',
+        '本地化交付真实案例', '一对一咨询常见误区', '落地节奏与时间表', '资深顾问问答 FAQ',
+        '新客 vs 老客不同打法', '技术栈与方案选择', '售后与持续运营', '与全国同行的差异',
+    ];
+    $angle = $angles[array_rand($angles)];
+    $titleStyles = [
+        '数字开头（5 步/3 大）', '疑问句引导', '对比/反差', '场景化（谁·何时·结果）', '行业术语锁定专业人群',
+    ];
+    $titleStyle = $titleStyles[array_rand($titleStyles)];
+    $nonce = substr(bin2hex(random_bytes(4)), 0, 8);
+
+    // prompt 严格要求：第一行「标题：xxx」+ 3 段小标题（独特措辞，不准"一/二/三"机械编号）+ 小结
+    // 反模板化开头列表；反 AI 思考过程泄露（这是用户截图痛点，reasoning 污染）
+    $prompt = "请围绕主题《{$cityName}{$industry}》写一篇约 {$words} 字的中文文章，语气：亲切实战。\n"
+        . "【本篇角度】{$angle} —— 围绕这个角度展开，避免泛泛。\n"
+        . "【本篇标题技巧】{$titleStyle}。\n"
+        . "【结构】第一行必须是「标题：xxx」（仅一行）；从第二行开始输出正文，**分 3 段小标题 + 一段总结**。\n"
+        . "  · 小标题必须用独特措辞（成本/选型/部署/落地/实战/流程/避坑/对比 等不同词），不准'一/二/三'机械编号；\n"
+        . "  · 每段 250~350 字；总 3 段 + 1 段可操作建议结尾。\n"
+        . "【反模板化】禁止以下套话开头：'以下是'/'在当今社会'/'随着...的发展'/'众所周知'/'不难发现'/'总而言之'/'综上所述'/'最近很多朋友问我'/'今天给大家分享'/'我们都知道'。\n"
+        . "【反思考泄露】禁止在正文中输出你的思考过程、prompt 重述、`We need / Need / Let's plan` 等任何英文/中文思考语句；**只输出最终正文**。\n"
+        . "【结尾】一段可操作的 3 步建议（具体动作，不是空话）。\n"
+        . "【格式】第一行 `标题：xxx`，之后段落之间空一行；不要输出 markdown、不要输出标记。\n"
+        . "[#" . $nonce . "]";
+
+    $apiUrlChat = rtrim($apiUrl, '/');
+    if (!preg_match('#/chat/completions$#', $apiUrlChat)) {
+        $apiUrlChat .= '/chat/completions';
+    }
+    $body = json_encode([
+        'model' => $model,
+        'messages' => [['role' => 'user', 'content' => $prompt]],
+        'max_tokens' => (int)($words * 1.6),
+        'temperature' => 1.1,
+    ], JSON_UNESCAPED_UNICODE);
+    $httpCode = 0;
+    $raw = ai_http_post($apiUrlChat, $apiKey, $body, $httpCode);
+    if ($raw === null || $raw === '') {
+        return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）'];
+    }
+    $rawTrim = ltrim((string)$raw);
+    if (stripos($rawTrim, '<!doctype') === 0 || stripos($rawTrim, '<html') === 0 || stripos($rawTrim, '<br') === 0) {
+        return ['ok' => false, 'msg' => 'AI 接口返回 HTML 错误页（httpCode=' . $httpCode . '），请检查 API 地址/Key/余额'];
+    }
+    if ($httpCode >= 400) {
+        return ['ok' => false, 'msg' => 'AI 接口 HTTP ' . $httpCode . '：' . mb_substr((string)$raw, 0, 100)];
+    }
+    // 去掉 AI 思考过程（reasoning_content 在 response body 中是独立字段，但中转站可能折叠到 content；清洗已知污染标记）
+    $raw = preg_replace('/We need[^\n]{0,500}(\nNeed[^\n]{0,500}){0,5}/i', '', (string)$raw) ?? $raw;
+    $raw = preg_replace("/Let's plan\.[^\n]{0,800}/i", '', (string)$raw) ?? $raw;
+    $raw = preg_replace('/[\(（]\*?\*?思考\*?\*?[）\)][^\n]{0,400}/u', '', (string)$raw) ?? $raw;
+
+    // 解析 OpenAI 兼容 JSON：从 choices[0].message.content 取纯正文（**绝不取 reasoning_content**）
+    $j = json_decode((string)$raw, true);
+    $text = '';
+    if (is_array($j) && isset($j['choices'][0]['message']['content'])) {
+        $text = (string)$j['choices'][0]['message']['content'];
+    } else {
+        // 容错：返回非标准 JSON，整体作为正文
+        $text = (string)$raw;
+    }
+    $text = trim($text);
+    if ($text === '') {
+        return ['ok' => false, 'msg' => 'AI 未返回任何正文'];
+    }
+
+    // 提取标题行
+    $title = '';
+    if (preg_match('/^(?:\*\*?)?标题[：:]\s*(.+?)(?:\*\*?)?\s*(?:\r?\n)+/ium', $text, $m)) {
+        $title = trim($m[1]);
+        $text = preg_replace('/^(?:\*\*?)?标题[：:]\s*.+?(?:\*\*?)?\s*(?:\r?\n)+/ium', '', $text, 1) ?? $text;
+    } elseif (preg_match('/^#\s*(.+?)\s*(?:\r?\n)+/um', $text, $m)) {
+        $title = trim($m[1]);
+        $text = preg_replace('/^#\s*.+?\s*(?:\r?\n)+/um', '', $text, 1) ?? $text;
+    }
+    if ($title === '') {
+        $title = $cityName . $industry . '（本地实战指南）';
+    }
+    $text = ltrim((string)$text);
+
+    // 二次清洗：去掉残留思考句（行首 "We need"、"Need"、"Let's"、"(思考)" 等）
+    $lines = explode("\n", (string)$text);
+    $cleanLines = [];
+    foreach ($lines as $ln) {
+        $t = trim($ln);
+        if ($t === '') { $cleanLines[] = ''; continue; }
+        // 单行若是英文思考/草稿语句，直接丢
+        if (preg_match('/^(We need|Need|Let\'s plan|Let me|OK,|First,|Then,|Now,|Need to|Should|Maybe|Could|Can we|Perhaps)/i', $t)) { continue; }
+        // 「(思考) ...」、「（思考）...」整行丢
+        if (preg_match('/^[\(（][* ]*?[* ]*?思考[* ]*?[）\)]\s*/u', $t)) { continue; }
+        $cleanLines[] = $ln;
+    }
+    $text = implode("\n", $cleanLines);
+    $text = trim($text);
+    if (mb_strlen(strip_tags($text)) < 200) {
+        return ['ok' => false, 'msg' => 'AI 返回正文过短（<200 字），疑似被过滤太多，已重新生成一次'];
+    }
+
+    // HTML 化：保留空行分段、保留小标题加粗（不再用 markdown **）—— 前台直接渲染
+    $contentHtml = '';
+    foreach (explode("\n", $text) as $para) {
+        $para = trim($para);
+        if ($para === '') { $contentHtml .= ''; continue; }
+        // 行首 4~30 字 + （冒号/——）的小标题判定为 sub-title
+        if (mb_strlen($para) <= 30 && preg_match('/(：|:|——|—)$/u', $para)) {
+            $contentHtml .= '<h3>' . htmlspecialchars($para, ENT_QUOTES, 'UTF-8') . '</h3>';
+        } else {
+            $contentHtml .= '<p>' . nl2br(htmlspecialchars($para, ENT_QUOTES, 'UTF-8')) . '</p>';
+        }
+    }
+
+    return [
+        'ok' => true,
+        'title' => $title,
+        'content' => $contentHtml,
+        'msg' => '',
+    ];
 }
 
 /** 主题配色（盘企 ui.json 同款 4 套方案 + 自定义） */
@@ -1041,7 +1217,9 @@ function ensure_schema(): void
 
     // 列级 utf8mb4 自愈：CONVERT TO 不一定能改列字符集，必须显式 MODIFY COLUMN（更可靠）
     $colDefs = [
-        'city_sites'  => ['title_suffix VARCHAR(50) DEFAULT ""', 'keywords VARCHAR(255) DEFAULT ""', 'description VARCHAR(500) DEFAULT ""', 'city VARCHAR(50)', 'pinyin VARCHAR(50)'],
+        'city_sites'  => ['title_suffix VARCHAR(50) DEFAULT ""', 'keywords VARCHAR(255) DEFAULT ""', 'description VARCHAR(500) DEFAULT ""', 'city VARCHAR(50)', 'pinyin VARCHAR(50)',
+                          // ===== 全国分站重构（2025）：分站自持内容字段（不再依赖 articles 表）=====
+                          'province VARCHAR(20) DEFAULT ""', 'content MEDIUMTEXT', 'content_title VARCHAR(200) DEFAULT ""', 'content_at DATETIME DEFAULT NULL', 'content_status TINYINT NOT NULL DEFAULT 0', 'content_err VARCHAR(255) DEFAULT ""', 'article_id INT UNSIGNED NOT NULL DEFAULT 0'],
         'articles'    => ['title VARCHAR(200)', 'summary VARCHAR(500)', 'content MEDIUMTEXT', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)', 'geo_summary TEXT', 'geo_faq TEXT'],
         'products'    => ['title VARCHAR(200)', 'summary VARCHAR(500)', 'content MEDIUMTEXT', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)'],
         'categories'  => ['name VARCHAR(100)', 'seo_title VARCHAR(200)', 'seo_keywords VARCHAR(255)', 'seo_description VARCHAR(500)'],
@@ -1057,6 +1235,11 @@ function ensure_schema(): void
                 $cur = DB::one("SELECT CHARACTER_SET_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?", [$tbl, $col]);
                 if ($cur && ($cur['c'] ?? '') !== 'utf8mb4') {
                     DB::run("ALTER TABLE `$tbl` MODIFY `$col` $def CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                } else {
+                    // 即使字符集已 utf8mb4，也要确保新增字段（如 content/article_id/content_status）存在
+                    try { DB::one("SELECT `$col` FROM `$tbl` LIMIT 1"); } catch (Throwable $e2) {
+                        DB::run("ALTER TABLE `$tbl` ADD COLUMN `$col` $def CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                    }
                 }
             } catch (Throwable $e) {
                 // 忽略

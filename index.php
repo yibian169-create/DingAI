@@ -559,6 +559,9 @@ if ($act === 'city_home') {
         'title' => $title, 'nav' => $navAll, 'settings' => settings_all(), 'city' => $city,
         'cities' => $allCities, 'cityArts' => $cityArts, 'site' => $siteTitle,
         'cat' => null, 'kw' => $kw, 'desc' => $desc, 'industry' => $industry,
+        // ===== 全国分站重构（2025）：优先渲染分站自身 content（不再依赖 articles 表）=====
+        'cityContent' => (string)($city['content'] ?? ''),
+        'cityContentTitle' => (string)($city['content_title'] ?? ''),
         'newsFoot' => $newsFoot, 'aboutUrl' => $aboutUrl, 'contactUrl' => $contactUrl,
         'jsonLdScript' => '<script type="application/ld+json">' . $jsonLdScript . '</script>',
     ]);

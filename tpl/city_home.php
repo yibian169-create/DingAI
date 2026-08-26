@@ -41,10 +41,20 @@
             </div>
         </aside>
         <div class="q-list-main">
-            <!-- 本地服务要点 -->
+            <!-- ============ 本地服务要点（重构 2025：优先展示分站自身 content；fallback 到模板文案） ============ -->
+            <?php if (!empty($cityContent)): ?>
+            <div class="city-content" style="margin-bottom:22px;font-size:14.5px;line-height:1.9;color:var(--faint)">
+                <?php if (!empty($cityContentTitle)): ?>
+                <h2 style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:14px;line-height:1.5;background:linear-gradient(90deg,var(--primary),var(--primary-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:inline-block"><?= e($cityContentTitle) ?></h2>
+                <?php endif; ?>
+                <style>.city-content p{margin:0 0 14px}.city-content h3{font-size:16px;font-weight:700;color:var(--text);margin:22px 0 12px;display:flex;align-items:center;gap:8px}.city-content h3::before{content:"";width:4px;height:16px;border-radius:3px;background:linear-gradient(180deg,var(--primary),var(--primary-2))}</style>
+                <?= $cityContent /* 已是 ai_city_content 输出的 HTML（h3/p），可信 */ ?>
+            </div>
+            <?php else: ?>
             <div class="q-band__info" style="margin-bottom:18px;font-size:14px;line-height:1.9;color:var(--faint)">
                 <?= e($city['city'] . ($industry ?? '网站建设')) ?>是<?= e($site) ?>面向<?= e($city['city']) ?>本地客户提供的专属服务：涵盖<?= e($industry ?? '网站建设') ?>、企业官网定制、商城小程序、SEO 排名优化等，全部本地化团队跟进，<?= e($city['city']) ?>本地企业足不出户即可获得一线城市的建站服务标准。
             </div>
+            <?php endif; ?>
             <?php if (!empty($cityArts)): ?>
             <div style="margin-bottom:20px">
                 <h3 class="q-side__title" style="margin-bottom:12px"><i></i><?= e($city['city']) ?>本地资讯</h3>
