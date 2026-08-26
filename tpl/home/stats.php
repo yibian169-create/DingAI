@@ -10,11 +10,12 @@ $defs = [
 ];
 $items = [];
 foreach ($defs as $i => $d) {
-  $items[] = [
-    'num'    => $s['stat' . $i . '_num']    ?? $d['num'],
-    'suffix' => $s['stat' . $i . '_suffix'] ?? $d['suffix'],
-    'label'  => $s['stat' . $i . '_label']  ?? $d['label'],
-  ];
+    // 优先读可视化编辑器的模块配置，未配置时回退到「主题设置」的 statN / statN_label
+    $items[] = [
+        'num'    => $s['stat' . $i . '_num']    ?? ($settings['stat' . $i]          ?? $d['num']),
+        'suffix' => $s['stat' . $i . '_suffix'] ?? $d['suffix'],
+        'label'  => $s['stat' . $i . '_label']  ?? ($settings['stat' . $i . '_label'] ?? $d['label']),
+    ];
 }
 ?>
 <section class="q-section q-stats">

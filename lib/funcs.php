@@ -67,16 +67,37 @@ function init_site(int $siteId, string $siteName): void
 /** 配置缓存容器（替代函数内 static，便于在写入后主动失效） */
 class SettingsCache {
     public static array $cache = [];
+    public static array $version = [];
 }
 
-/** 按站点清除配置缓存；不传则清除全部 */
+/** 读取站点配置缓存版本号（用于多 worker 缓存一致性） */
+function settings_cache_version(int $siteId): int
+{
+    static $mem = [];
+    if (!isset($mem[$siteId])) {
+        $row = DB::one("SELECT `value` FROM settings WHERE site_id=? AND `key`='__cache_version'", [$siteId]);
+        $mem[$siteId] = (int)($row['value'] ?? 0);
+    }
+    return $mem[$siteId];
+}
+
+/** 按站点清除配置缓存；不传则清除全部。
+ *  同时更新数据库里的 __cache_version，使其他 PHP-FPM worker 进程缓存失效 */
 function settings_clear_cache(?int $siteId = null): void
 {
     if ($siteId === null) {
         SettingsCache::$cache = [];
+        SettingsCache::$version = [];
+        $sid = current_site_id();
     } else {
         unset(SettingsCache::$cache[$siteId]);
+        unset(SettingsCache::$version[$siteId]);
+        $sid = $siteId;
     }
+    DB::run(
+        "INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)",
+        [$sid, '__cache_version', (string)time()]
+    );
 }
 
 /** 读取单个配置（按当前站点）
@@ -89,11 +110,13 @@ function setting(string $key, string $def = '', ?int $siteId = null): string
         $row = DB::one('SELECT `value` FROM settings WHERE site_id=? AND `key`=?', [$siteId, $key]);
         $raw = $row['value'] ?? $def;
     } else {
-        if (!isset(SettingsCache::$cache[$siteId])) {
+        $ver = settings_cache_version($siteId);
+        if (!isset(SettingsCache::$cache[$siteId]) || (SettingsCache::$version[$siteId] ?? 0) < $ver) {
             SettingsCache::$cache[$siteId] = [];
             foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
                 SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
             }
+            SettingsCache::$version[$siteId] = $ver;
         }
         $raw = SettingsCache::$cache[$siteId][$key] ?? $def;
     }
@@ -117,11 +140,13 @@ function settings_all(): array
         }
         return $out;
     }
-    if (!isset(SettingsCache::$cache[$siteId])) {
+    $ver = settings_cache_version($siteId);
+    if (!isset(SettingsCache::$cache[$siteId]) || (SettingsCache::$version[$siteId] ?? 0) < $ver) {
         SettingsCache::$cache[$siteId] = [];
         foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
             SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
         }
+        SettingsCache::$version[$siteId] = $ver;
     }
     return SettingsCache::$cache[$siteId];
 }

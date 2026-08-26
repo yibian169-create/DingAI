@@ -1533,19 +1533,10 @@ if ($m === 'visual_home_save') {
 $builtinDir = __DIR__ . '/tpls/builtin';
 $siteTplDir = __DIR__ . '/tpls/site_' . $sid;
 
-/** 内置模板中文显示名 */
+/** 内置模板中文显示名（仅保留：系统默认 + 家纺家居·暖调） */
 $TPL_NAMES = [
     'default'     => '系统默认',
-    'catering'    => '餐饮美食',
-    'snack'       => '休闲零食',
-    'hometextile' => '家纺家居',
-    'family'      => '县城亲子互动',
-    // 演示/内置模板目录名 → 中文显示名（2025 修复：模板中心不再空白）
-    '_demo_template'                 => '通用演示（活力橙）',
-    '_demo_template_factory'         => '工业工厂',
-    '_demo_template_home_textile'    => '家纺家居·经典',
     '_demo_template_home_textile2'   => '家纺家居·暖调',
-    '_demo_template_textile'         => '纺织布料',
 ];
 
 /** 解析模板目录（内置优先，其次站点历史模板，再次演示模板 _demo*） */
@@ -1568,14 +1559,8 @@ function resolve_tpl_dir(string $name): ?string
     if (is_dir($demo) && is_file($demo . '/style.css')) {
         return $demo;
     }
-    // _demo_template_home_textile 之类：尝试匹配（去掉 _demo_template 前缀的映射）
+    // 保留别名：旧数据/外部引用若用 home_textile2 仍可解析到暖调模板
     $map = [
-        'default' => '_demo_template',
-        'catering' => '_demo_template_factory',
-        'factory' => '_demo_template_factory',
-        'hometextile' => '_demo_template_home_textile',
-        'home_textile' => '_demo_template_home_textile',
-        'textile' => '_demo_template_textile',
         'hometextile2' => '_demo_template_home_textile2',
         'home_textile2' => '_demo_template_home_textile2',
     ];
@@ -1627,15 +1612,11 @@ function apply_tpl_home_json(string $tplName, int $siteId): bool
 
 if ($m === 'tpls') {
     $tpls = [];
-    // 内置模板：扫描 tpls/builtin/* 与 tpls/_demo*（演示模板即内置行业模板，含 style.css/main.js/home.json）
+    // 内置模板：仅扫描「系统默认」与「家纺家居·暖调」
     $scanDirs = [];
     if (is_dir($builtinDir)) { $scanDirs[] = $builtinDir; }
-    foreach ([__DIR__ . '/tpls/_demo_template', __DIR__ . '/tpls/_demo_template_factory', __DIR__ . '/tpls/_demo_template_home_textile', __DIR__ . '/tpls/_demo_template_home_textile2', __DIR__ . '/tpls/_demo_template_textile'] as $d) {
+    foreach ([__DIR__ . '/tpls/_demo_template_home_textile2'] as $d) {
         if (is_dir($d)) { $scanDirs[] = $d; }
-    }
-    // 也扫描 tpls/ 下所有 _demo* 目录（未来新增演示模板自动识别）
-    foreach (glob(__DIR__ . '/tpls/_demo*', GLOB_ONLYDIR) as $d) {
-        if (!in_array($d, $scanDirs, true)) { $scanDirs[] = $d; }
     }
     foreach ($scanDirs as $d) {
         $name = basename($d);
@@ -1685,15 +1666,8 @@ if ($m === 'tpls') {
 /* ---------- 下载 demo 模板（让用户用 AI 改造） ---------- */
 if ($m === 'tpl_demo_download') {
     $demo = $_GET['demo'] ?? '';
-    if ($demo === 'factory') {
-        $demoDir = '_demo_template_factory';
-    } elseif ($demo === 'textile') {
-        $demoDir = '_demo_template_textile';
-    } elseif ($demo === 'home_textile') {
-        $demoDir = '_demo_template_home_textile2';
-    } else {
-        $demoDir = '_demo_template';
-    }
+    // 当前仅开放「家纺家居·暖调」demo 下载
+    $demoDir = '_demo_template_home_textile2';
     $src = __DIR__ . '/tpls/' . $demoDir;
     if (!is_dir($src)) {
         http_response_code(404);
@@ -1720,9 +1694,7 @@ if ($m === 'tpl_demo_download') {
         }
     }
     $zip->close();
-    $fn = $demo === 'factory' ? 'deyingding_template_factory.zip'
-        : ($demo === 'textile' ? 'deyingding_template_textile.zip'
-        : ($demo === 'home_textile' ? 'deyingding_template_home_textile2.zip' : 'deyingding_template_demo.zip'));
+    $fn = 'deyingding_template_home_textile2.zip';
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . $fn . '"');
     header('Content-Length: ' . filesize($tmp));

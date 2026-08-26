@@ -9,7 +9,8 @@ require_once __DIR__ . '/lib/funcs.php';
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_admin();
 
-$allowed = ['catering' => '餐饮美食', 'snack' => '休闲零食', 'hometextile' => '家纺家居', 'family' => '县城亲子互动'];
+// 当前仅保留「家纺家居·暖调」模板预览；其余模板已从模板中心下架
+$allowed = ['_demo_template_home_textile2' => '家纺家居·暖调'];
 $tpl = trim($_GET['tpl'] ?? '');
 if (!array_key_exists($tpl, $allowed)) {
     $tpl = '';
@@ -44,9 +45,11 @@ $S = [
     'stat3' => '92',  'stat3_label' => '满意度',
     'stat4' => '24',  'stat4_label' => '小时在线',
 ];
+// tpl/home.php 使用 $settings 变量读取布局与模块配置
+$settings = $S;
 
-$cssHref = $isBuiltin ? 'tpls/builtin/' . $tpl . '/style.css' : '';
-$bodyClass = $isBuiltin ? 'tpl-' . $tpl : '';
+$cssHref = $isBuiltin ? 'tpls/' . $tpl . '/style.css' : '';
+$bodyClass = $isBuiltin ? 'tpl-' . preg_replace('/[^a-zA-Z0-9_-]/', '', $tpl) : '';
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">

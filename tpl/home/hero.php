@@ -8,8 +8,9 @@ $hm = [];
 if (!empty($settings['home_modules'])) { $hm = json_decode($settings['home_modules'], true) ?: []; }
 $h = $hm['hero'] ?? [];
 $kicker = $h['kicker'] ?? '代码全部开源 · AI 加持';
-$title  = $h['title']  ?? '让万千工厂和品牌商<br>拥有 <em>好用的官方网站</em>';
-$sub    = $h['sub']    ?? '全自动文章 SEO × GEO，降本增效。《得应盯建站系统》通过 GEO 优化，尽量让大语言模型主动引用你的内容。';
+// 优先读可视化编辑器里的模块配置，未配置时回退到「主题设置」字段
+$title  = $h['title']  ?? ($settings['hero_title'] ?? '让万千工厂和品牌商<br>拥有 <em>好用的官方网站</em>');
+$sub    = $h['sub']    ?? ($settings['hero_sub']    ?? '全自动文章 SEO × GEO，降本增效。《得应盯建站系统》通过 GEO 优化，尽量让大语言模型主动引用你的内容。');
 $btnText= $h['btn_text'] ?? '开源下载';
 $btnUrl = $h['btn_url'] ?? '#';
 $tags   = $h['tags'] ?? ['AIGC 自动成文','GEO 生成式优化','RAG 知识库','大模型 获客'];
