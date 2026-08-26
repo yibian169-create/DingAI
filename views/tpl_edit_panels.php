@@ -12,12 +12,32 @@ $themes = [
     'solar'  => ['活力橙', '#f97316', '#f59e0b', '#ef4444'],
     'custom' => ['自定义', null, null, null],
 ];
+
+// 首页模块与 DIY 可视化编辑器的对应关系
+$homeModules = [
+    ['key' => 'hero',         'name' => '首屏 Hero', 'desc' => '大标题、副标题、CTA'],
+    ['key' => 'scenario',     'name' => '业务场景',  'desc' => '业务/服务场景展示'],
+    ['key' => 'stats',        'name' => '数据展示',  'desc' => '数字滚动统计'],
+    ['key' => 'capabilities', 'name' => '核心能力',  'desc' => '能力/优势卡片'],
+    ['key' => 'about',        'name' => '关于我们',  'desc' => '公司介绍文案'],
+    ['key' => 'workflow',     'name' => '流程',      'desc' => '服务/合作流程'],
+    ['key' => 'cta',          'name' => '行动号召',  'desc' => '底部转化横幅'],
+    ['key' => 'contact',      'name' => '联系我们',  'desc' => '联系表单与信息'],
+    ['key' => 'ticker',       'name' => '滚动条',    'desc' => '顶部公告滚动'],
+    ['key' => 'products',     'name' => '产品展示',  'desc' => '产品列表'],
+    ['key' => 'news',         'name' => '文章动态',  'desc' => '最新文章'],
+];
+$layout = json_decode($data['home_layout'] ?? '[]', true) ?: [];
+$layoutMap = [];
+foreach ($layout as $it) {
+    $layoutMap[$it['key'] ?? ''] = $it;
+}
 ?>
 <nav class="tpl-tab">
-  <a href="<?= e($settingsBaseUrl) ?>global" class="<?= $tab==='global'?'active':'' ?>">全局</a>
-  <a href="<?= e($settingsBaseUrl) ?>home"   class="<?= $tab==='home'?'active':'' ?>">首页</a>
+  <a href="<?= e($settingsBaseUrl) ?>global" class="<?= $tab==='global'?'active':'' ?>">站点信息</a>
+  <a href="<?= e($settingsBaseUrl) ?>home"   class="<?= $tab==='home'?'active':'' ?>">首页内容</a>
   <a href="<?= e($settingsBaseUrl) ?>lang"   class="<?= $tab==='lang'?'active':'' ?>">语言项</a>
-  <a href="<?= e($settingsBaseUrl) ?>other"  class="<?= $tab==='other'?'active':'' ?>">其它</a>
+  <a href="<?= e($settingsBaseUrl) ?>other"  class="<?= $tab==='other'?'active':'' ?>">SEO · 联系 · 备案</a>
 </nav>
 
 <form method="post" action="admin.php?m=settings_save" id="tplForm">
@@ -25,16 +45,45 @@ $themes = [
   <?php if ($from !== ''): ?><input type="hidden" name="from" value="<?= e($from) ?>"><?php endif; ?>
 
   <?php if ($tab === 'global'): ?>
-  <!-- ===== 全局 ===== -->
+  <!-- ===== 站点信息 ===== -->
   <div class="tpl-panel">
-    <h3>联系方式</h3>
-    <p class="desc">站点的对外联系方式，显示在前台页脚与导航头部</p>
+    <h3>品牌与联系方式</h3>
+    <p class="desc">站点基础信息，会显示在导航、页脚、联系模块等全局位置</p>
     <div class="fg">
-      <div class="field"><label>站点名称</label><input type="text" name="site_name" value="<?= e($data['site_name'] ?? '') ?>"></div>
-      <div class="field"><label>联系电话</label><input type="text" name="phone" value="<?= e($data['phone'] ?? '') ?>"></div>
+      <div class="field"><label>站点名称</label><input type="text" name="site_name" value="<?= e($data['site_name'] ?? '') ?>" placeholder="如：得应盯"></div>
+      <div class="field"><label>联系电话</label><input type="text" name="phone" value="<?= e($data['phone'] ?? '') ?>" placeholder="前台默认联系电话"></div>
       <div class="field"><label>联系邮箱</label><input type="text" name="email" value="<?= e($data['email'] ?? '') ?>"></div>
       <div class="field full"><label>公司地址</label><input type="text" name="address" value="<?= e($data['address'] ?? '') ?>"></div>
-      <div class="field full"><label>页脚简介</label><input type="text" name="footer_text" value="<?= e($data['footer_text'] ?? '') ?>"></div>
+      <div class="field full"><label>页脚简介</label><input type="text" name="footer_text" value="<?= e($data['footer_text'] ?? '') ?>" placeholder="一句话介绍，显示在页脚"></div>
+    </div>
+  </div>
+
+  <div class="tpl-panel">
+    <h3>主题风格</h3>
+    <p class="desc">全站配色主题；选择「自定义」时可自由配置三主色</p>
+    <div class="theme-grid">
+      <?php foreach ($themes as $key => $info): ?>
+      <label class="theme-card <?= $theme === $key ? 'checked' : '' ?>" onclick="selectTheme('<?= $key ?>')">
+        <input type="radio" name="theme" value="<?= $key ?>" <?= $theme === $key ? 'checked' : '' ?> data-preset="<?= $key ?>">
+        <span class="dot">
+          <?php if ($key !== 'custom'): ?>
+          <i style="background:<?= $info[1] ?>"></i>
+          <i style="background:<?= $info[2] ?>"></i>
+          <i style="background:<?= $info[3] ?>"></i>
+          <?php else: ?>
+          <i style="background:<?= e($data['custom_c1'] ?? '#22d3ee') ?>"></i>
+          <i style="background:<?= e($data['custom_c2'] ?? '#818cf8') ?>"></i>
+          <i style="background:<?= e($data['custom_c3'] ?? '#e879f9') ?>"></i>
+          <?php endif; ?>
+        </span>
+        <span class="name"><?= $info[0] ?></span>
+      </label>
+      <?php endforeach; ?>
+    </div>
+    <div class="theme-custom" id="customRow" style="<?php echo $theme === 'custom' ? '' : 'display:none'; ?>">
+      <label>主色 <input type="color" name="custom_c1" value="<?= e($data['custom_c1'] ?? '#22d3ee') ?>"></label>
+      <label>辅色 <input type="color" name="custom_c2" value="<?= e($data['custom_c2'] ?? '#818cf8') ?>"></label>
+      <label>点缀 <input type="color" name="custom_c3" value="<?= e($data['custom_c3'] ?? '#e879f9') ?>"></label>
     </div>
   </div>
 
@@ -47,9 +96,82 @@ $themes = [
     </div>
   </div>
 
+  <?php elseif ($tab === 'home'): ?>
+  <!-- ===== 首页内容 ===== -->
+  <div class="tpl-panel" style="background:linear-gradient(135deg, rgba(99,102,241,.08), rgba(34,211,238,.08));border-color:rgba(99,102,241,.25)">
+    <h3 style="display:flex;align-items:center;gap:10px">
+      <span>与「首页 DIY」配合使用</span>
+      <a href="admin.php?m=tpls&tab=diy" class="btn btn-p" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:7px 16px">打开首页 DIY →</a>
+    </h3>
+    <p class="desc">下方模块的文案、图片、排序、显隐，请在「首页 DIY」可视化编辑器中设置；这里仅保留当 DIY 未配置时的<strong>回退文案</strong>，避免首页空白。</p>
+  </div>
+
+  <div class="tpl-panel">
+    <h3>首页模块概览</h3>
+    <p class="desc">当前启用的模块状态，点击上方按钮进入可视化编辑</p>
+    <div class="diy-module-grid">
+      <?php foreach ($homeModules as $m): $on = !empty($layoutMap[$m['key']]['show']); ?>
+      <div class="diy-module-card <?= $on ? 'on' : 'off' ?>">
+        <div class="diy-module-top">
+          <strong><?= e($m['name']) ?></strong>
+          <span class="diy-badge <?= $on ? 'badge-on' : 'badge-off' ?>"><?= $on ? '已启用' : '未启用' ?></span>
+        </div>
+        <div class="diy-module-desc"><?= e($m['desc']) ?></div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+
+  <div class="tpl-panel">
+    <h3>首页回退文案</h3>
+    <p class="desc">当「首页 DIY」没有配置对应模块时，前台会显示这里的文字</p>
+    <div class="fg">
+      <div class="field"><label>首屏主标题</label><input type="text" name="hero_title" value="<?= e($data['hero_title'] ?? '') ?>"></div>
+      <div class="field full"><label>首屏副标题</label><textarea name="hero_sub" rows="2"><?= e($data['hero_sub'] ?? '') ?></textarea></div>
+      <div class="field full"><label>关于我们文案</label><textarea name="about_text" rows="3"><?= e($data['about_text'] ?? '') ?></textarea></div>
+    </div>
+  </div>
+
+  <div class="tpl-panel">
+    <h3>数据展示（4 组数字 + 标签）</h3>
+    <p class="desc">首页中部"数字滚动"模块的默认内容；若 DIY 中已配置 stats 模块则优先使用 DIY</p>
+    <div class="fg">
+      <?php for ($i = 1; $i <= 4; $i++): $suf = ['','万+','万+','%'][$i-1] ?? '+'; ?>
+      <div class="field"><label>数字 <?= $i ?><?= $suf ? '（后缀 ' . $suf . '）' : '' ?></label><input type="text" name="stat<?= $i ?>" value="<?= e($data['stat' . $i] ?? '') ?>"></div>
+      <div class="field"><label>标签 <?= $i ?></label><input type="text" name="stat<?= $i ?>_label" value="<?= e($data['stat' . $i . '_label'] ?? '') ?>"></div>
+      <?php endfor; ?>
+    </div>
+  </div>
+
+  <?php elseif ($tab === 'lang'): ?>
+  <!-- ===== 语言项 ===== -->
+  <div class="tpl-panel">
+    <h3>常用按钮文案</h3>
+    <p class="desc">前台常用按钮与提示文字，可在后台统一修改</p>
+    <div class="fg">
+      <div class="field"><label>返回首页</label><input type="text" name="lang_home" value="<?= e($data['lang_home'] ?? '返回首页') ?>"></div>
+      <div class="field"><label>查看更多</label><input type="text" name="lang_more" value="<?= e($data['lang_more'] ?? '查看更多') ?>"></div>
+      <div class="field"><label>联系我们</label><input type="text" name="lang_contact" value="<?= e($data['lang_contact'] ?? '联系我们') ?>"></div>
+      <div class="field"><label>立即咨询</label><input type="text" name="lang_consult" value="<?= e($data['lang_consult'] ?? '立即咨询') ?>"></div>
+      <div class="field"><label>了解详情</label><input type="text" name="lang_read_more" value="<?= e($data['lang_read_more'] ?? '了解详情') ?>"></div>
+      <div class="field"><label>暂无内容提示</label><input type="text" name="lang_empty" value="<?= e($data['lang_empty'] ?? '暂无内容，敬请期待') ?>"></div>
+    </div>
+  </div>
+
+  <?php else: ?>
+  <!-- ===== SEO · 联系 · 备案 ===== -->
+  <div class="tpl-panel">
+    <h3>主站 SEO</h3>
+    <p class="desc">仅作用于主站首页及列表页默认标题/关键词/描述；栏目与内容页可单独覆盖。<strong>全国分站 SEO 请在「全国分站」菜单单独管理。</strong></p>
+    <div class="fg">
+      <div class="field full"><label>SEO 关键词</label><input type="text" name="seo_keywords" value="<?= e($data['seo_keywords'] ?? '') ?>" placeholder="多个关键词用英文逗号分隔"></div>
+      <div class="field full"><label>SEO 描述</label><textarea name="seo_description" rows="3" placeholder="120 字左右，吸引点击"><?= e($data['seo_description'] ?? '') ?></textarea></div>
+    </div>
+  </div>
+
   <div class="tpl-panel">
     <h3>联系我们（首页板块 + 悬浮边栏）</h3>
-    <p class="desc">配置首页「联系我们」板块与右侧悬浮边栏的电话和二维码；留空则使用上方全局联系方式或显示占位</p>
+    <p class="desc">配置首页「联系我们」板块与右侧悬浮边栏的电话和二维码；留空则使用全局联系方式</p>
     <div class="fg">
       <div class="field"><label>服务电话</label><input type="text" name="contact_phone" value="<?= e($data['contact_phone'] ?? '') ?>" placeholder="留空使用全局联系电话"></div>
       <div class="field"><label>导师 / 第二电话</label><input type="text" name="contact_phone2" value="<?= e($data['contact_phone2'] ?? '') ?>" placeholder="如：138-0000-8888"></div>
@@ -81,91 +203,6 @@ $themes = [
   </div>
 
   <div class="tpl-panel">
-    <h3>SEO 优化（全站）</h3>
-    <p class="desc">全站默认的搜索引擎优化信息，栏目/内容可单独覆盖</p>
-    <div class="fg">
-      <div class="field full"><label>SEO 关键词</label><input type="text" name="seo_keywords" value="<?= e($data['seo_keywords'] ?? '') ?>"></div>
-      <div class="field full"><label>SEO 描述</label><input type="text" name="seo_description" value="<?= e($data['seo_description'] ?? '') ?>"></div>
-    </div>
-  </div>
-
-  <?php elseif ($tab === 'home'): ?>
-  <!-- ===== 首页 ===== -->
-  <div class="tpl-panel">
-    <h3>模板配色</h3>
-    <p class="desc">选择站点主题色系，全站按钮、渐变、强调色将跟随；选「自定义」可配置三主色</p>
-    <div class="theme-grid">
-      <?php foreach ($themes as $key => $info): ?>
-      <label class="theme-card <?= $theme === $key ? 'checked' : '' ?>" onclick="selectTheme('<?= $key ?>')">
-        <input type="radio" name="theme" value="<?= $key ?>" <?= $theme === $key ? 'checked' : '' ?> data-preset="<?= $key ?>">
-        <span class="dot">
-          <?php if ($key !== 'custom'): ?>
-          <i style="background:<?= $info[1] ?>"></i>
-          <i style="background:<?= $info[2] ?>"></i>
-          <i style="background:<?= $info[3] ?>"></i>
-          <?php else: ?>
-          <i style="background:<?= e($data['custom_c1'] ?? '#22d3ee') ?>"></i>
-          <i style="background:<?= e($data['custom_c2'] ?? '#818cf8') ?>"></i>
-          <i style="background:<?= e($data['custom_c3'] ?? '#e879f9') ?>"></i>
-          <?php endif; ?>
-        </span>
-        <span class="name"><?= $info[0] ?></span>
-      </label>
-      <?php endforeach; ?>
-    </div>
-    <div class="theme-custom" id="customRow" style="<?php echo $theme === 'custom' ? '' : 'display:none'; ?>">
-      <label>主色 <input type="color" name="custom_c1" value="<?= e($data['custom_c1'] ?? '#22d3ee') ?>"></label>
-      <label>辅色 <input type="color" name="custom_c2" value="<?= e($data['custom_c2'] ?? '#818cf8') ?>"></label>
-      <label>点缀 <input type="color" name="custom_c3" value="<?= e($data['custom_c3'] ?? '#e879f9') ?>"></label>
-    </div>
-  </div>
-
-  <div class="tpl-panel">
-    <h3>Hero 首屏</h3>
-    <p class="desc">首页首屏标题、副标题；渐变词会跟随主题色</p>
-    <div class="fg">
-      <div class="field"><label>主标题渐变词</label><input type="text" name="hero_title" value="<?= e($data['hero_title'] ?? '') ?>"></div>
-      <div class="field full"><label>副标题</label><textarea name="hero_sub" rows="2"><?= e($data['hero_sub'] ?? '') ?></textarea></div>
-    </div>
-  </div>
-
-  <div class="tpl-panel">
-    <h3>关于我们</h3>
-    <p class="desc">关于板块的大段文案</p>
-    <div class="fg">
-      <div class="field full"><label>关于文案</label><textarea name="about_text" rows="3"><?= e($data['about_text'] ?? '') ?></textarea></div>
-    </div>
-  </div>
-
-  <div class="tpl-panel">
-    <h3>数据统计（4 组数字 + 标签）</h3>
-    <p class="desc">首页中部"数字滚动"模块。后缀固定（+ / 万+ / 万+ / %），后台只填数字</p>
-    <div class="fg">
-      <?php for ($i = 1; $i <= 4; $i++): $suf = ['','万+','万+','%'][$i-1] ?? '+'; ?>
-      <div class="field"><label>数字 <?= $i ?><?= $suf ? '（后缀 ' . $suf . '）' : '' ?></label><input type="text" name="stat<?= $i ?>" value="<?= e($data['stat' . $i] ?? '') ?>"></div>
-      <div class="field"><label>标签 <?= $i ?></label><input type="text" name="stat<?= $i ?>_label" value="<?= e($data['stat' . $i . '_label'] ?? '') ?>"></div>
-      <?php endfor; ?>
-    </div>
-  </div>
-
-  <?php elseif ($tab === 'lang'): ?>
-  <!-- ===== 语言项 ===== -->
-  <div class="tpl-panel">
-    <h3>常用按钮文案</h3>
-    <p class="desc">前台常用按钮文字，可在后台统一修改</p>
-    <div class="fg">
-      <div class="field"><label>返回首页</label><input type="text" name="lang_home" value="<?= e($data['lang_home'] ?? '返回首页') ?>"></div>
-      <div class="field"><label>查看更多</label><input type="text" name="lang_more" value="<?= e($data['lang_more'] ?? '查看更多') ?>"></div>
-      <div class="field"><label>联系我们</label><input type="text" name="lang_contact" value="<?= e($data['lang_contact'] ?? '联系我们') ?>"></div>
-      <div class="field"><label>立即咨询</label><input type="text" name="lang_consult" value="<?= e($data['lang_consult'] ?? '立即咨询') ?>"></div>
-      <div class="field"><label>了解详情</label><input type="text" name="lang_read_more" value="<?= e($data['lang_read_more'] ?? '了解详情') ?>"></div>
-      <div class="field"><label>暂无内容提示</label><input type="text" name="lang_empty" value="<?= e($data['lang_empty'] ?? '暂无内容，敬请期待') ?>"></div>
-    </div>
-  </div>
-
-  <?php else: ?>
-  <!-- ===== 其它 ===== -->
-  <div class="tpl-panel">
     <h3>备案与版权</h3>
     <p class="desc">底部显示的备案号与版权年份（可不填）</p>
     <div class="fg">
@@ -178,12 +215,6 @@ $themes = [
     <h3>后台安全</h3>
     <p class="desc">登录页滑动验证（防暴力破解；需要频繁测试时可关闭）</p>
     <label class="switch"><input type="checkbox" name="login_captcha" value="1" <?= ($data['login_captcha'] ?? '1') === '1' ? 'checked' : '' ?>> 启用后台登录滑动验证</label>
-  </div>
-
-  <div class="tpl-panel">
-    <h3>全国分站开关</h3>
-    <p class="desc">开启后前台自动启用分站 SEO（标题/关键词按城市替换）。详细城市管理请到「全国分站」菜单</p>
-    <p><a href="admin.php?m=citysites" class="btn btn-p" style="display:inline-block;text-decoration:none">前往全国分站管理 →</a></p>
   </div>
   <?php endif; ?>
 
@@ -201,11 +232,23 @@ function selectTheme(key) {
 }
 </script>
 
-<!-- 联系我们二维码：上传 + 图片空间选择器 -->
+<!-- 联系我们二维码：上传 + 图片空间选择器 + 首页模块概览样式 -->
 <style>
 .imgpick-preview{width:40px;height:40px;border-radius:8px;border:1px solid var(--line);object-fit:cover;display:block;background:var(--toolbar-bg);flex:none}
 .imgpick-preview[hidden]{display:none}
 .imgpick-field{margin-bottom:4px}
+
+.diy-module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
+.diy-module-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--card);transition:all .18s}
+.diy-module-card.on{border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.06)}
+.diy-module-card.off{opacity:.65}
+.diy-module-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.diy-module-top strong{font-size:14px}
+.diy-badge{font-size:11px;padding:3px 8px;border-radius:20px}
+.diy-badge.badge-on{background:rgba(16,185,129,.12);color:#10b981}
+.diy-badge.badge-off{background:var(--toolbar-bg);color:var(--muted)}
+.diy-module-desc{font-size:12px;color:var(--muted);line-height:1.45}
+
 .dyimg-modal{display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center;padding:20px}
 .dyimg-modal__overlay{position:absolute;inset:0;background:rgba(2,6,23,.6)}
 .dyimg-modal__box{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;width:min(760px,92vw);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
