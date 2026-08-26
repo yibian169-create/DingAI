@@ -31,14 +31,7 @@
                 <p><?= e($city['city']) ?>本地化一对一服务，专业顾问在线解答，<?= e($industry ?? '网站建设') ?>、网站制作、SEO 优化一站式搞定。</p>
                 <a class="q-btn q-btn--grad q-btn--sm" href="tel:<?= e(!empty($S['phone']) ? $S['phone'] : '') ?>">立即咨询</a>
             </div>
-            <div class="q-side__block">
-                <h3 class="q-side__title"><i></i>全国服务城市</h3>
-                <nav class="q-side__list q-side__city">
-                    <?php if (!empty($cities)): foreach ($cities as $c): ?>
-                    <a href="<?= e(city_url($c)) ?>"><?= e($c['city']) ?><small><?= e(!empty($c['title_suffix']) ? $c['title_suffix'] : '分站') ?></small></a>
-                    <?php endforeach; endif; ?>
-                </nav>
-            </div>
+            <?php /* 全国分站列表只在「导航 + 全国分站列表页」展示，此处移除侧栏全量列表，避免页面臃肿 */ ?>
         </aside>
         <div class="q-list-main">
             <!-- ============ 本地服务要点（重构 2025：优先展示分站自身 content；fallback 到模板文案） ============ -->
@@ -86,14 +79,13 @@
                 <p><?= e($city['city']) ?>本地内容持续更新中，敬请期待</p>
             </div>
             <?php endif; ?>
-            <!-- 城市间互链 -->
-            <div style="margin-top:26px">
-                <h3 class="q-side__title" style="margin-bottom:12px"><i></i>更多城市分站</h3>
-                <div style="display:flex;flex-wrap:wrap;gap:8px">
-                    <?php if (!empty($cities)): foreach ($cities as $c): ?>
-                    <a href="<?= e(city_url($c)) ?>" style="display:inline-block;padding:7px 14px;font-size:12.5px;border:1px solid var(--border-tertiary);border-radius:20px;color:var(--faint);text-decoration:none;transition:all .15s"><?= e($c['city']) ?></a>
-                    <?php endforeach; endif; ?>
+            <?php /* 全国分站列表只在「导航 + 全国分站列表页」展示，此处把底部全量链接组替换为精简入口 */ ?>
+            <div style="margin-top:26px;padding:18px 22px;background:var(--bg);border:1px dashed var(--border-tertiary);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                <div style="font-size:13px;color:var(--faint);line-height:1.7">
+                    <strong style="color:var(--text)">全国其他 <?= (int)(count($cities ?? []) - 1) ?>+ 个城市分站</strong> · 同样 1v1 本地化服务<br>
+                    <small>完整城市列表请到顶部「全国分站」导航查看</small>
                 </div>
+                <a class="q-btn q-btn--grad q-btn--sm" href="index.php?act=city">查看全国分站 →</a>
             </div>
         </div>
     </div>
