@@ -1032,6 +1032,12 @@ if ($m === 'citysites') {
     } catch (Throwable $e) {
         DB::run('ALTER TABLE city_sites ADD COLUMN pinyin VARCHAR(50) NOT NULL DEFAULT "" COMMENT "城市拼音（URL 后缀）" AFTER city');
     }
+    // 旧库兼容：无 tdk_try_at 列时自动补充（AI SEO 跑过时间戳，跑过含失败就不重试）
+    try {
+        DB::one('SELECT tdk_try_at FROM city_sites LIMIT 1');
+    } catch (Throwable $e) {
+        DB::run('ALTER TABLE city_sites ADD COLUMN tdk_try_at DATETIME DEFAULT NULL COMMENT "上次 AI SEO 尝试时间（含失败）" AFTER description');
+    }
     render('citysites.php', [
         'enable' => setting('city_enable', '0'),
         'list'   => DB::all('SELECT * FROM city_sites WHERE site_id=? ORDER BY sort ASC, id ASC', [$sid]),
@@ -1082,12 +1088,14 @@ if ($m === 'ai_city_tdk_one') {
     }
     $r = ai_city_tdk($city['city'], $industry);
     if (!$r['ok']) {
-        echo json_encode(['ok' => false, 'msg' => $r['msg']]);
+        // 失败也置 tdk_try_at（避免无限重复尝试浪费 AI 配额）
+        DB::run('UPDATE city_sites SET tdk_try_at=NOW() WHERE id=? AND site_id=?', [$city['id'], $sid]);
+        echo json_encode(['ok' => false, 'msg' => 'AI 返回失败：' . $r['msg']]);
         if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
-    // 落库（每城独立 TDK，覆盖模板版）
-    DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=? WHERE id=? AND site_id=?', [$r['title_suffix'], $r['keywords'], $r['description'], $city['id'], $sid]);
+    // 落库（每城独立 TDK，覆盖模板版；同时记 tdk_try_at）
+    DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=?,tdk_try_at=NOW() WHERE id=? AND site_id=?', [$r['title_suffix'], $r['keywords'], $r['description'], $city['id'], $sid]);
     echo json_encode(['ok' => true, 'msg' => '已更新《' . $city['city'] . '》的 SEO', 'title_suffix' => $r['title_suffix']]);
     if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
@@ -1163,9 +1171,9 @@ if ($m === 'city_del') {
 }
 if ($m === 'city_clear_tdk') {
     require_admin();
-    // 清空所有分站的 SEO 字段（标题/关键词/描述），城市本身保留 —— 用于覆盖新代码后旧数据无法被新逻辑重写
+    // 清空所有分站的 SEO 字段（标题/关键词/描述）+ 重置尝试时间戳（让 AI 可重新跑）
     $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
-    DB::run('UPDATE city_sites SET title_suffix=?, keywords=?, description=? WHERE site_id=?', ['', '', '', $sid]);
+    DB::run('UPDATE city_sites SET title_suffix=?, keywords=?, description=?, tdk_try_at=NULL WHERE site_id=?', ['', '', '', $sid]);
     redirect('admin.php?m=citysites', "已清空 {$n} 个分站的 SEO 字段（城市保留），可立刻重新跑模板版/AI 版生成");
 }
 if ($m === 'city_clear_all') {

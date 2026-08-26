@@ -146,7 +146,7 @@
 <script>
 var CSRF = <?= json_encode(csrf_token()) ?>;
 var ALL_CITIES = <?= json_encode(array_values(array_filter(array_map(function ($c) {
-    return ['id' => (int)$c['id'], 'city' => (string)$c['city'], 'status' => (int)$c['status']];
+    return ['id' => (int)$c['id'], 'city' => (string)$c['city'], 'status' => (int)$c['status'], 'tdk_try_at' => $c['tdk_try_at'] ?? null];
 }, $list), function ($c) { return $c['status'] === 1; }))) ?>;
 function edit(c) {
   document.getElementById('f_id').value = c.id;
@@ -209,7 +209,13 @@ function cityTdkAiRun(){
   var st = document.getElementById('ctStatus');
   if (!btn || !st) { return; }
   if (!ALL_CITIES.length) { alert('请先「一键导入全国分站」'); return; }
-  var list = ALL_CITIES.slice(0, max);
+  // 仅跑未尝试过的（含成功/失败）；想重跑 → 列表右上角「🧹 清 SEO 字段」（同步清尝试时间戳）
+  var list = ALL_CITIES.filter(function (c) { return c.status === 1 && !c.tdk_try_at; });
+  if (!list.length) {
+    alert('所有城市都已尝试过生成 SEO（成功或失败）。\n\n如需重跑：列表右上角点「🧹 清 SEO 字段」（会清空 SEO 字段 + 尝试时间戳），然后再点本按钮即可。');
+    return;
+  }
+  list = list.slice(0, max);
   if (!confirm('AI 将为 ' + list.length + ' 个城市每城独立生成 SEO（每城约 3~5 秒，共约 ' + Math.ceil(list.length * 4 / 60) + ' 分钟）。\n已填过 SEO 的城市自动跳过。\n继续？')) { return; }
   btn.disabled = true;
   st.style.display = 'block';
