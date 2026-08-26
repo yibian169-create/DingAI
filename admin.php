@@ -709,7 +709,7 @@ if ($m === 'ai_post_now') {
         redirect('admin.php?m=articles', '请先在「自动发文计划」填写关键词池');
     }
     $kw = $kws[array_rand($kws)];
-    $withImg = setting('ai_plan_img', '1') === '1';
+    $withImg = false; // 全国分站重构 2025：自动发文默认纯文字（文图分离、小服务器友好；如需配图 → 文章列表点「🎨 配图」入队或后台 ai_unillustrated 批量处理）
     $doSeo = setting('ai_plan_seo', '1') === '1';
     $doGeo = setting('ai_plan_geo', '1') === '1';
     $r = ai_build_article($kw, 1200, '亲切实战', setting('ai_plan_extra', ''), $withImg, $doSeo, $doGeo);

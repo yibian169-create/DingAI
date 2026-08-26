@@ -2178,7 +2178,7 @@ function maybe_auto_post(): void
     if ($kw === '') {
         $kw = $kws[array_rand($kws)];
     }
-    $withImg = setting('ai_plan_img', '1') === '1';
+    $withImg = false; // 全国分站重构 2025：定时任务默认纯文字（文图分离、小服务器友好）
     $doSeo = setting('ai_plan_seo', '1') === '1';
     $doGeo = setting('ai_plan_geo', '1') === '1';
     $r = ai_build_article($kw, 1200, '亲切实战', setting('ai_plan_extra', ''), $withImg, $doSeo, $doGeo);

@@ -222,7 +222,14 @@
           </div>
           <div class="field full"><label>关键词池（每行一个，AI 按顺序取用，循环不重复）</label><textarea name="kw" style="min-height:120px" placeholder="节日营销活动&#10;客户转介绍设计&#10;短视频获客"><?= e($cfg['ai_plan_kw'] ?? '') ?></textarea></div>
           <div class="field full"><label>补充要求（每篇通用）</label><textarea name="extra" placeholder="统一语气、结尾话术等"><?= e($cfg['ai_plan_extra'] ?? '') ?></textarea></div>
-          <label class="switch" style="margin:4px 0"><input type="checkbox" name="img" <?= ($cfg['ai_plan_img'] ?? '1') === '1' ? 'checked' : '' ?>> ✨ 已配置生图 API 时每篇插图 2 张（未配置则纯文字无图，封面取正文第一张图）</label>
+          <!-- ====== 全国分站重构 2025：自动配图已移除（默认纯文字优先，节约服务器压力） ======
+               后续如需配图，进入文章列表点「🎨 配图」或批量处理（面板下方「📷 文章补图」按钮） ====== -->
+          <div style="margin:14px 0;padding:12px 16px;background:rgba(34,211,238,.08);border-left:3px solid #22d3ee;border-radius:6px;font-size:13px;color:var(--text);line-height:1.7">
+            <strong>🖋️ 文图分离策略（小服务器友好）</strong><br>
+            自动发文<strong>默认纯文字先行</strong>，不再强制配图。需要配图时：① 文章列表点「🎨 配图」逐篇补；
+            ② 或在面板下方「📷 文章补图」入口批量处理。<br>
+            配图任务有独立队列（<code>ai_img_queue</code>），前台访问时按顺序后台消化，每篇 2 张图（约 60s/篇）。
+          </div>
           <label class="switch" style="margin:4px 0"><input type="checkbox" name="censor" checked disabled> 🔒 自动过滤敏感词（米字代替）</label>
           <label class="switch" style="margin:4px 0"><input type="checkbox" name="publish" <?= ($cfg['ai_plan_publish'] ?? '1') === '1' ? 'checked' : '' ?>> 🚀 生成后直接发布（取消则存草稿）</label>
           <label class="switch" style="margin:4px 0"><input type="checkbox" name="seo" <?= ($cfg['ai_plan_seo'] ?? '1') === '1' ? 'checked' : '' ?>> 🔍 自动生成 SEO（标题/关键词/描述）</label>
@@ -251,15 +258,40 @@
         <h3>📜 执行日志</h3>
         <div class="auto-log">
           <?php foreach (DB::all('SELECT keyword,model,has_image,created_at FROM ai_post_log WHERE site_id=? ORDER BY id DESC LIMIT 20', [$sid]) as $log): ?>
-            <div>[<?= substr($log['created_at'], 5, 11) ?>] <b>自动发布</b>：<?= e($log['keyword']) ?>（<?= $log['model'] ?> · 插图 <?= $log['has_image'] ? '2 张 ✓' : '0' ?>）</div>
+            <div>[<?= substr($log['created_at'], 5, 11) ?>] <b>自动发布</b>：<?= e($log['keyword']) ?>（<?= $log['model'] ?> · 纯文字 · 可补图）</div>
           <?php endforeach; ?>
+        </div>
+      </div>
+
+      <!-- ====== 文章补图任务入口（文图分离后的工作量面板） ====== -->
+      <?php
+        $unillustratedCount = 0;
+        try {
+            // 复用 funcs.php 的 ai_unillustrated_articles()，这里用 SQL 直接 count 加快
+            $unillustratedCount = DB::one(
+                "SELECT COUNT(*) AS n FROM articles WHERE site_id=? AND status=1 AND cover='' AND has_image=0",
+                [$sid]
+            )['n'] ?? 0;
+        } catch (Throwable $e) { /* ignore */ }
+      ?>
+      <div class="auto-card" style="border-color:<?= $unillustratedCount > 0 ? '#f59e0b' : 'var(--line)' ?>">
+        <h3>📷 文章补图任务 <?= $unillustratedCount > 0 ? '<span style="color:#f59e0b;font-size:12px;font-weight:600;background:rgba(245,158,11,.12);padding:2px 8px;border-radius:8px;margin-left:6px">' . $unillustratedCount . ' 篇待补</span>' : '<span style="color:var(--ok);font-size:12px;font-weight:600;background:rgba(16,185,129,.12);padding:2px 8px;border-radius:8px;margin-left:6px">全部已配图 ✓</span>' ?></h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">
+          文图分离后，文字文章先发、图片后补。已发布且封面为空（<code>cover=''</code> 且 <code>has_image=0</code>）的文章列在这里，可逐篇或批量补图。
+          <br>补图任务有独立队列（<code>ai_img_queue</code>），前台访问时后台消化，<strong>不抢占自动发文配额</strong>，小服务器也能扛。
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-p" type="button" id="aiQueueNextBtn" onclick="aiIllustrateNext()">⚡ 补下一张图（队列推进）</button>
+          <a class="btn btn-s" href="admin.php?m=ai_unillustrated">📋 查看全部待补（<?= (int)$unillustratedCount ?>）</a>
+          <span style="font-size:12px;color:var(--muted)">每篇约 30~60s · 不抢自动发文时间窗</span>
         </div>
       </div>
 
       <div class="note">
         <b>触发机制（无需宝塔配置）：</b><br>
-        ① <b>网页伪 Cron</b>：访客或你打开前台任意页面时，系统自动检查是否到发布时间点且今天篇数未达标 → 抓取下一个未用关键词 → DeepSeek 写文 → 若已配置生图 API 则根据文意用 ChatGPT 插 2 张图、封面自动取正文第一张图；未配置则纯文字无图 → 自动发布。<br>
-        ② <b>防重复</b>：每篇发布后记录关键词到 <code>ai_post_log</code>，当日循环不刷屏。
+        ① <b>网页伪 Cron</b>：访客或你打开前台任意页面时，系统自动检查是否到发布时间点且今天篇数未达标 → 抓取下一个未用关键词 → DeepSeek 写文 → <strong>纯文字优先（不配图）</strong>，发布后封面自动取正文第一张图（如果有）→ 自动发布。<br>
+        ② <b>防重复</b>：每篇发布后记录关键词到 <code>ai_post_log</code>，当日循环不刷屏。<br>
+        ③ <b>补图</b>：纯文字文章已发布，可随时在文章列表点「🎨 配图」或批量补图（见下方入口）。
       </div>
     </div>
 
@@ -435,6 +467,40 @@ function aiIllustrateOne(btn){
       setTimeout(function(){ btn.textContent=old; btn.style.color=''; }, 2200);
     }
   }).catch(e=>{ btn.disabled=false; btn.textContent='⚠'; setTimeout(function(){ btn.textContent=old; }, 2200); });
+}
+
+/* ---------- 文图分离：补下一张图（自动找最早一篇未配图文章入队） ---------- */
+function aiIllustrateNext(){
+  var btn = document.getElementById('aiQueueNextBtn');
+  if (btn) { btn.disabled = true; var old = btn.textContent; btn.textContent = '⏳ 查找中...'; }
+  // 拿未配图列表 → 自动拿最早一篇 → 加入配图队列
+  fetch('admin.php?m=ai_unillustrated').then(r=>r.json()).then(function(r){
+    if (!r.ok || !r.list || !r.list.length) {
+      alert('🎉 没有待补图的文章！');
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+      return;
+    }
+    var target = r.list[0]; // 最早未配图
+    if (!confirm('即将为「' + (target.title || ('文章#'+target.id)) + '」入队配图任务（每篇约 30~60s，后台自动处理）？\n\n待补剩余：' + r.list.length + ' 篇')) {
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+      return;
+    }
+    var fd = new FormData();
+    fd.append('article_id', target.id);
+    fd.append('count', '2');
+    fetch('admin.php?m=ai_illustrate', {method:'POST', body:fd}).then(function(r2){return r2.json()}).then(function(r2){
+      if (btn) { btn.disabled = false; btn.textContent = old; }
+      if (r2.ok) {
+        alert('✅ ' + r2.msg + '\n文章：' + (target.title || ('#'+target.id)));
+        location.reload();
+      } else {
+        alert('⚠ ' + (r2.msg || '入队失败'));
+      }
+    });
+  }).catch(function(e){
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+    alert('请求失败：' + e.message);
+  });
 }
 
 /* ---------- 配图队列状态提示（页面加载时显示待处理数量） ---------- */
