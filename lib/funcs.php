@@ -1025,6 +1025,19 @@ function ensure_schema(): void
             INDEX idx_cat (site_id, cat_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
+
+    // 字符集自愈：所有可能存中文/emoji 的表必须是 utf8mb4（老 latin1/utf8 表存 AI 标题时会报 1366）
+    foreach (['city_sites', 'articles', 'products', 'categories', 'form_defs', 'form_data', 'geo_entries', 'geo_kb'] as $tbl) {
+        try {
+            $row = DB::one("SELECT TABLE_COLLATION AS c FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?", [$tbl]);
+            $cs = is_array($row) ? ($row['c'] ?? '') : '';
+            if ($cs !== '' && stripos($cs, 'utf8mb4') === false) {
+                DB::run("ALTER TABLE `$tbl` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            }
+        } catch (Throwable $e) {
+            // 表可能不存在或权限不足，忽略
+        }
+    }
 }
 
 /* =========================================================
