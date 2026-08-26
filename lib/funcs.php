@@ -1528,11 +1528,41 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
     if ($apiUrl === '' || $apiKey === '') {
         return ['ok' => false, 'msg' => '未配置写作 API（地址/Key）'];
     }
-    $prompt = "请围绕主题《{$topic}》写一篇约 {$words} 字的中文文章，语气：{$tone}。"
-        . "结构：标题 + 3 个小标题分段 + 小结。内容务实、可落地、避免空话。"
-        . ($extra !== '' ? " 补充要求：{$extra}" : '')
-        . " 输出格式：第一行必须是文章标题，格式为\"标题：xxx\"；从第二行开始输出正文，段落之间空一行。不要输出 Markdown 标记、不要输出标题行以外的标记。";
-    $raw = ai_chat($apiUrl, $apiKey, $model, $prompt, (int)($words * 1.6));
+    // 随机写作角度（防止多篇城市文章模板化、千篇一律）
+    $angles = [
+        '用户痛点分析', '技术方案对比', '成本与性价比拆解', '本地化服务优势',
+        '行业常见误区', '选型避坑指南', '真实案例拆解', '行业趋势与数据',
+        '新手入门指南', '高频问答 FAQ', '对比测评', '实操步骤演示',
+    ];
+    $angle = $angles[array_rand($angles)];
+    $titleHints = [
+        '用数字说话（如「5 步」「3 大」)', '用疑问句引导读者', '用对比/对比词',
+        '用场景化标题（突出谁、什么场景、什么结果）', '用行业黑话/术语精准锁定专业人群',
+    ];
+    $titleHint = $titleHints[array_rand($titleHints)];
+    $nonce = substr(bin2hex(random_bytes(4)), 0, 8);
+    $prompt = "请围绕主题《{$topic}》写一篇约 {$words} 字的中文文章，语气：{$tone}。\n"
+        . "【本篇写作角度】{$angle} —— 围绕这个角度展开，避免泛泛而谈。\n"
+        . "【本篇标题技巧】{$titleHint}。\n"
+        . "【结构要求】标题 + 3 个小标题分段 + 小结。**小标题必须用独特措辞**（如「成本/选型/部署/落地/实战」等不同词），不要用'一/二/三'这种机械编号。\n"
+        . "【反模板化】禁止用以下套话开头：'以下是'/'在当今社会'/'随着...的发展'/'众所周知'/'不难发现'/'总而言之'/'综上所述'/'最近很多朋友问我'/'今天给大家分享'。\n"
+        . "【结尾】用一段具体可操作的建议收尾（不是空话套话）。\n"
+        . ($extra !== '' ? "【补充要求】{$extra}\n" : '')
+        . "【输出格式】第一行必须是文章标题，格式为\"标题：xxx\"；从第二行开始输出正文，段落之间空一行。不要输出 Markdown 标记、不要输出标题行以外的标记。\n"
+        . "[#" . $nonce . "]"; // 唯一标识，防止 AI 用缓存/复用同 prompt 输出
+    // 直接用 ai_http_post 自定义 temperature=1.1（提高多样性，避免多篇城市文章重复）
+    $apiUrlChat = rtrim($apiUrl, '/');
+    if (!preg_match('#/chat/completions$#', $apiUrlChat)) {
+        $apiUrlChat .= '/chat/completions';
+    }
+    $body = json_encode([
+        'model' => $model,
+        'messages' => [['role' => 'user', 'content' => $prompt]],
+        'max_tokens' => (int)($words * 1.6),
+        'temperature' => 1.1,
+    ], JSON_UNESCAPED_UNICODE);
+    $httpCode = 0;
+    $raw = ai_http_post($apiUrlChat, $apiKey, $body, $httpCode);
     if ($raw === null) {
         return ['ok' => false, 'msg' => 'AI 写文调用失败（检查 API 地址/Key/网络）'];
     }
