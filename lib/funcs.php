@@ -1189,7 +1189,7 @@ function ai_http_get(string $url, string $apiKey, int &$httpCode): ?string
 }
 
 /** POST JSON 请求，优先 curl，回退 file_get_contents；返回响应体或 null（发不出去时） */
-function ai_http_post(string $url, string $apiKey, string $body, int &$httpCode): ?string
+function ai_http_post(string $url, string $apiKey, string $body, int &$httpCode, int $timeout = 120): ?string
 {
     $httpCode = 0;
     $headers  = ['Content-Type: application/json', "Authorization: Bearer $apiKey", 'Accept: application/json'];
@@ -1201,7 +1201,7 @@ function ai_http_post(string $url, string $apiKey, string $body, int &$httpCode)
             CURLOPT_POST           => true,
             CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
@@ -1223,7 +1223,7 @@ function ai_http_post(string $url, string $apiKey, string $body, int &$httpCode)
                 'method'  => 'POST',
                 'header'  => "Content-Type: application/json\r\nAuthorization: Bearer $apiKey\r\n",
                 'content' => $body,
-                'timeout' => 120,
+                'timeout' => $timeout,
             ],
         ]);
         $resp = @file_get_contents($url, false, $ctx);
@@ -1323,7 +1323,8 @@ function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt)
         'size' => '1024x1024',
     ], JSON_UNESCAPED_UNICODE);
     $httpCode = 0;
-    $resp = ai_http_post($apiUrl, $apiKey, $body, $httpCode);
+    // 生图等待放宽到 10 分钟（gpt 生图慢是常态），写文等其它调用仍用默认 120s
+    $resp = ai_http_post($apiUrl, $apiKey, $body, $httpCode, 600);
     if ($resp === null || $resp === '') {
         return $fail("生图接口请求失败（HTTP {$httpCode}，网络/证书/超时，请检查生图地址与服务器网络）");
     }
