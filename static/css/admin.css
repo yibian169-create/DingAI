@@ -470,3 +470,17 @@ textarea{min-height:140px;resize:vertical}
 .pw-wrap input{flex:1;min-width:0}
 .pw-toggle{flex-shrink:0}
 .pw-mask{word-break:break-all;overflow-wrap:anywhere;display:inline-block;max-width:100%;background:var(--bg-2,#f3f4f6);padding:4px 8px;border-radius:4px;font-family:monospace;font-size:12px;color:var(--muted,#6b7280);margin-top:6px}
+
+/* GEO 关键词蒸馏输入区（输入框 + 主色按钮 + 快捷主题） */
+.kw-input-row{display:flex;gap:10px;align-items:stretch;margin-bottom:6px}
+.kw-input-wrap{flex:1;min-width:0;position:relative;display:flex;align-items:center}
+.kw-input-icon{position:absolute;left:12px;color:var(--muted);font-size:14px;pointer-events:none;line-height:1}
+.kw-input{flex:1;min-width:0;width:100%;height:42px;padding:0 14px 0 36px;border:1.5px solid var(--border-tertiary);border-radius:8px;font-size:14px;background:var(--color-background-primary);transition:border-color .15s,box-shadow .15s;color:var(--color-text-primary)}
+.kw-input:focus{outline:none;border-color:var(--color-accent,#4f46e5);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.kw-input::placeholder{color:var(--muted);font-size:13.5px}
+.kw-btn-primary{height:42px;padding:0 18px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-weight:500}
+.kw-btn-icon{font-size:15px;line-height:1}
+.kw-presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 4px}
+.kw-presets-label{font-size:12px;color:var(--muted);margin-right:2px}
+.kw-chip{padding:5px 12px;font-size:12px;background:var(--bg-2,#f3f4f6);border:1px solid var(--border-tertiary);border-radius:14px;color:var(--color-text-primary);cursor:pointer;transition:all .15s;line-height:1.2}
+.kw-chip:hover{background:var(--color-accent,#4f46e5);color:#fff;border-color:transparent}

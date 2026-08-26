@@ -307,9 +307,22 @@
             <button type="button" class="btn ghost s" id="kwFoldBtn" onclick="toggleKwFold()">展开列表 ▼</button>
           </div>
           <p class="sub-note">输入一个产品词，AI 帮你列出客户真正会问的问题，比如"哪家好""多少钱""怎么选"。这些词可以直接加到自动发文计划里。</p>
-          <div class="batch-meta">
-            <input id="kwTopic" class="field" style="flex:1;margin:0" placeholder="输入主题，如：超声波清洗机">
-            <button class="btn" onclick="distill()">生成客户问题词</button>
+          <div class="kw-input-row">
+            <div class="kw-input-wrap">
+              <span class="kw-input-icon">🔍</span>
+              <input id="kwTopic" class="kw-input" placeholder="输入主题，如：超声波清洗机">
+            </div>
+            <button class="btn btn-p kw-btn-primary" onclick="distill()">
+              <span class="kw-btn-icon">✨</span>生成客户问题词
+            </button>
+          </div>
+          <div class="kw-presets">
+            <span class="kw-presets-label">试试：</span>
+            <button type="button" class="kw-chip" onclick="document.getElementById('kwTopic').value='网站建设'">网站建设</button>
+            <button type="button" class="kw-chip" onclick="document.getElementById('kwTopic').value='小程序开发'">小程序开发</button>
+            <button type="button" class="kw-chip" onclick="document.getElementById('kwTopic').value='SEO优化'">SEO优化</button>
+            <button type="button" class="kw-chip" onclick="document.getElementById('kwTopic').value='AI生图'">AI生图</button>
+            <button type="button" class="kw-chip" onclick="document.getElementById('kwTopic').value='小程序商城'">小程序商城</button>
           </div>
           <div class="gen-status" id="kwStatus"><span id="kwStatusText"></span></div>
           <?php if (!empty($keywords)): ?>
