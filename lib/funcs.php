@@ -271,12 +271,15 @@ function save_setting(string $key, string $value): void
     if (in_array($key, _secret_keys(), true)) {
         $value = enc_secret($value);
     }
-    // 依赖 (site_id,key) 唯一索引做原子 upsert，避免先 UPDATE 再 INSERT 时
-    // 因值未变化导致 affected_rows=0 而误走 INSERT 触发 Duplicate entry。
-    DB::run(
-        'INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=?',
-        [$siteId, $key, $value, $value]
-    );
+    // 不依赖唯一索引做原子 upsert：先按 (site_id,key) 判断是否存在，
+    // 存在则 UPDATE（会更新所有同名行，顺带修复历史重复行），不存在则 INSERT。
+    // 这样无论库结构如何（缺唯一索引 / 已存在重复行）都不会“写不进”或“多行冲突”。
+    $exists = DB::one('SELECT 1 FROM settings WHERE site_id=? AND `key`=?', [$siteId, $key]);
+    if ($exists) {
+        DB::run('UPDATE settings SET `value`=? WHERE site_id=? AND `key`=?', [$value, $siteId, $key]);
+    } else {
+        DB::run('INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?)', [$siteId, $key, $value]);
+    }
     // 写入后立即失效该站点配置缓存，避免 PHP-FPM 同一 worker 内下一请求读到旧值
     settings_clear_cache($siteId);
 }

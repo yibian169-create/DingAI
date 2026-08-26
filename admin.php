@@ -1419,51 +1419,63 @@ if ($m === 'settings') {
     exit;
 }
 if ($m === 'settings_save') {
-    $keys = [
-        // 全局
-        'site_name','phone','email','address','footer_text','techsupport_text','techsupport_url',
-        'seo_keywords','seo_description',
-        // 联系我们
-        'contact_phone','contact_phone2','contact_wx_qr','contact_mp_qr',
-        // 首页
-        'theme','custom_c1','custom_c2','custom_c3',
-        'hero_title','hero_sub','about_text',
-        'stat1','stat1_label','stat2','stat2_label','stat3','stat3_label','stat4','stat4_label',
-        // 语言项
-        'lang_home','lang_more','lang_contact','lang_consult','lang_read_more','lang_empty',
-        // 其它
-        'beian','copyright_year',
-        // 安全
-        'login_captcha',
-    ];
-    foreach ($keys as $k) {
-        if ($k === 'login_captcha') { // 复选框：未勾选时 POST 无该字段，需显式写 0
-            save_setting($k, isset($_POST[$k]) ? '1' : '0');
-            continue;
-        }
-        // 【BUG 修复 2026-08-27】原代码 isset 判 + trim 写入，会把"用户没填的字段"误判为非空后写入空串覆盖数据库
-        // 改为：仅当字段存在且非空字符串时才覆盖（用户没填 → 保留 DB 原值）
-        if (array_key_exists($k, $_POST)) {
-            $val = trim((string)$_POST[$k]);
-            if ($val !== '') {
-                DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, $k, $val]);
+    try {
+        $keys = [
+            // 全局
+            'site_name','phone','email','address','footer_text','techsupport_text','techsupport_url',
+            'seo_keywords','seo_description',
+            // 联系我们
+            'contact_phone','contact_phone2','contact_wx_qr','contact_mp_qr',
+            // 首页
+            'theme','custom_c1','custom_c2','custom_c3',
+            'hero_title','hero_sub','about_text',
+            'stat1','stat1_label','stat2','stat2_label','stat3','stat3_label','stat4','stat4_label',
+            // 语言项
+            'lang_home','lang_more','lang_contact','lang_consult','lang_read_more','lang_empty',
+            // 其它
+            'beian','copyright_year',
+            // 安全
+            'login_captcha',
+        ];
+        foreach ($keys as $k) {
+            if ($k === 'login_captcha') { // 复选框：未勾选时 POST 无该字段，需显式写 0
+                save_setting($k, isset($_POST[$k]) ? '1' : '0');
+                continue;
             }
-            // 空值（val === ''）跳过 —— 保留 DB 原值；如需主动清空某字段，用 _clear_<key>=1 触发
-            if ($val === '' && isset($_POST["_clear_$k"]) && $_POST["_clear_$k"] === '1') {
-                DB::run("UPDATE settings SET `value`='' WHERE site_id=? AND `key`=?", [$sid, $k]);
+            // 仅当字段确实出现在 POST 中才处理（主题设置页每个 tab 只提交本 tab 字段，
+            // 其余 tab 字段不在 $_POST 里，跳过即可，不会误清空其它 tab）。
+            if (array_key_exists($k, $_POST)) {
+                $val = trim((string)$_POST[$k]);
+                if ($val !== '') {
+                    save_setting($k, $val);   // 健壮 upsert：存在则更新、不存在则插入
+                } elseif (!empty($_POST["_clear_$k"])) {
+                    // 显式要求清空该字段
+                    DB::run("UPDATE settings SET `value`='' WHERE site_id=? AND `key`=?", [$sid, $k]);
+                }
+                // 其余情况（空值且未要求清空）：保留 DB 原值，不覆盖
             }
         }
+        $tab = $_POST['tab'] ?? '';
+        $from = $_POST['from'] ?? '';
+        if ($from === 'tpls') {
+            $redirect = 'admin.php?m=tpls&tab=theme' . ($tab ? '&sett=' . urlencode($tab) : '');
+        } else {
+            $redirect = 'admin.php?m=settings' . ($tab ? '&tab=' . urlencode($tab) : '');
+        }
+        // 保存后立刻失效配置缓存，避免 PHP-FPM 同一 worker 重定向后读到旧空值
+        settings_clear_cache($sid);
+        redirect($redirect, '配置已保存');
+    } catch (Throwable $e) {
+        // 保存失败不再静默：把真实错误抛到页面，便于定位（数据库/权限/字段等）
+        http_response_code(500);
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<pre style="padding:24px;margin:0;font:13px/1.7 monospace;color:#b91c1c;background:#fff;white-space:pre-wrap">'
+            . "配置保存失败（已捕获异常，便于排查）：\n\n"
+            . htmlspecialchars($e->getMessage()) . "\n\n"
+            . htmlspecialchars($e->getTraceAsString())
+            . "</pre>";
+        exit;
     }
-    $tab = $_POST['tab'] ?? '';
-    $from = $_POST['from'] ?? '';
-    if ($from === 'tpls') {
-        $redirect = 'admin.php?m=tpls&tab=theme' . ($tab ? '&sett=' . urlencode($tab) : '');
-    } else {
-        $redirect = 'admin.php?m=settings' . ($tab ? '&tab=' . urlencode($tab) : '');
-    }
-    // 保存后立刻失效配置缓存，避免 PHP-FPM 同一 worker 重定向后读到旧空值
-    settings_clear_cache($sid);
-    redirect($redirect, '配置已保存');
 }
 
 /* ---------- 首页 DIY 布局保存 ---------- */
