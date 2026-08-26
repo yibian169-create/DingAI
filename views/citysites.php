@@ -65,6 +65,17 @@
         </div>
 
         <div class="panel">
+          <h2>⚡ AI 智能生成 SEO <span style="color:var(--danger);font-size:11.5px;background:#fef2f2;padding:2px 8px;border-radius:8px;margin-left:6px;font-weight:500">更智能 · 防站群惩罚</span></h2>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">用 AI 为每个城市独立写 SEO，<strong>意思一致但表达不同</strong>（避免统一模板被百度识别为站群）。已填过 SEO 的城市自动跳过（<strong>想强制覆盖</strong>：先到编辑表单清空该城的标题后缀，再来跑）。<br>每城约 3~5 秒，200 城约 15 分钟（DeepSeek 约 ¥0.1~0.2）。</p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <input type="text" id="ctIndustry" value="网站建设" placeholder="行业词" style="flex:1;min-width:150px">
+            <input type="number" id="ctMax" value="50" min="1" max="300" style="width:90px" placeholder="上限">
+            <button class="btn btn-p" id="ctBtn" onclick="cityTdkAiRun()">⚡ 开始 AI 智能生成</button>
+          </div>
+          <div class="note" id="ctStatus" style="display:none;margin-top:4px;font-size:12.5px;line-height:1.7;max-height:150px;overflow:auto"></div>
+        </div>
+
+        <div class="panel">
           <h2>全国分站内容批量生成（AI 逐城发文）</h2>
           <p style="color:var(--muted);font-size:13px;margin-bottom:12px">AI 为每个城市生成一篇「城市+行业」专属文章（标题/正文含城市名，自动发布到「自动发文计划」所选栏目）。<strong>每城约 20~60 秒</strong>，可随时中断，已生成的自动跳过。</p>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
@@ -182,6 +193,43 @@ function cityPlanRun() {
         st.textContent = '⚠ [' + i + '/' + ALL_CITIES.length + '] ' + c.city + ' 请求失败：' + e.message + '（可再次点击从失败城市继续）';
         next();
       });
+  })();
+}
+
+/* ---------- AI 智能生成分站 SEO（每城不同措辞但意思一致） ---------- */
+function cityTdkAiRun(){
+  var industry = (document.getElementById('ctIndustry').value || '').trim() || '网站建设';
+  var max = parseInt(document.getElementById('ctMax').value) || 50;
+  var btn = document.getElementById('ctBtn');
+  var st = document.getElementById('ctStatus');
+  if (!btn || !st) { return; }
+  if (!ALL_CITIES.length) { alert('请先「一键导入全国分站」'); return; }
+  var list = ALL_CITIES.slice(0, max);
+  if (!confirm('AI 将为 ' + list.length + ' 个城市每城独立生成 SEO（每城约 3~5 秒，共约 ' + Math.ceil(list.length * 4 / 60) + ' 分钟）。\n已填过 SEO 的城市自动跳过。\n继续？')) { return; }
+  btn.disabled = true;
+  st.style.display = 'block';
+  var i = 0, okN = 0, skipN = 0, failN = 0;
+  function finish(m) { st.textContent = m; btn.disabled = false; }
+  (function next(){
+    if (i >= list.length) {
+      finish('🎉 本批完成：AI 新增 ' + okN + '，跳过 ' + skipN + '（已有 SEO），失败 ' + failN + '。可再次点击继续生成剩余城市。');
+      return;
+    }
+    var c = list[i++];
+    st.textContent = '⏳ [' + i + '/' + list.length + '] 正在为《' + c.city + '》AI 生成 SEO…（约 3~5 秒）';
+    var fd = new FormData();
+    fd.append('city_id', c.id);
+    fd.append('industry', industry);
+    fd.append('csrf', CSRF);
+    fetch('admin.php?m=ai_city_tdk_one', { method: 'POST', body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (r.ok) { okN++; st.textContent = '✅ [' + i + '/' + list.length + '] ' + c.city + '：' + (r.title_suffix || r.msg || '完成'); }
+        else if (r.dup) { skipN++; st.textContent = '⏭ [' + i + '/' + list.length + '] ' + c.city + ' 已有 SEO，跳过'; }
+        else { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 失败：' + (r.msg || '未知原因'); }
+        next();
+      })
+      .catch(function (e) { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 请求失败：' + e.message; next(); });
   })();
 }
 </script>

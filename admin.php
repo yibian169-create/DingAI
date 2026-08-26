@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_tdk_all', 'city_plan_run', 'city_notice', 'city_save', 'city_del',
+    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_plan_run', 'city_notice', 'city_save', 'city_del',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -1061,6 +1061,36 @@ if ($m === 'city_tdk_all') {
     $industry = trim((string)($_POST['industry'] ?? '网站建设'));
     $r = city_tdk_auto($industry);
     redirect('admin.php?m=citysites', "已为 {$r['updated']} 个分站生成独立 SEO（共 {$r['total']} 城）");
+}
+if ($m === 'ai_city_tdk_one') {
+    require_admin();
+    if (function_exists('ob_start')) { @ob_start(); }
+    header('Content-Type: application/json; charset=utf-8');
+    $cityId   = (int)($_POST['city_id'] ?? 0);
+    $industry = trim((string)($_POST['industry'] ?? '网站建设'));
+    $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=?', [$cityId, $sid]);
+    if (!$city) {
+        echo json_encode(['ok' => false, 'msg' => '城市不存在']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    // 已填过 SEO 的城市跳过（避免重复扣 AI 额度；想强制覆盖可手动编辑该分站 title_suffix 后再删掉重跑）
+    if (trim((string)$city['title_suffix']) !== '' && trim((string)$city['keywords']) !== '' && trim((string)$city['description']) !== '') {
+        echo json_encode(['ok' => false, 'dup' => true, 'msg' => $city['city'] . ' 已有 SEO，跳过（清空标题后缀后重跑可强制覆盖）']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    $r = ai_city_tdk($city['city'], $industry);
+    if (!$r['ok']) {
+        echo json_encode(['ok' => false, 'msg' => $r['msg']]);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    // 落库（每城独立 TDK，覆盖模板版）
+    DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=? WHERE id=? AND site_id=?', [$r['title_suffix'], $r['keywords'], $r['description'], $city['id'], $sid]);
+    echo json_encode(['ok' => true, 'msg' => '已更新《' . $city['city'] . '》的 SEO', 'title_suffix' => $r['title_suffix']]);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+    exit;
 }
 if ($m === 'city_plan_run') {
     require_admin();

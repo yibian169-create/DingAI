@@ -317,6 +317,54 @@ function city_pinyin(string $city): string
     return '';
 }
 
+/** AI 智能生成分站 SEO（每城不同措辞但意思一致 —— 防百度站群模板惩罚） */
+function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
+{
+    $industry = trim($industry);
+    if ($industry === '') {
+        $industry = '网站建设';
+    }
+    $apiUrl  = (string)setting('ai_api_url', '');
+    $apiKey  = (string)setting('ai_api_key', '');
+    $model   = (string)setting('ai_model', 'deepseek-chat');
+    if ($apiUrl === '' || $apiKey === '') {
+        return ['ok' => false, 'msg' => '请先在「API 配置」填写写作 API 地址与密钥'];
+    }
+    $cityName = trim($cityName);
+    if ($cityName === '') {
+        return ['ok' => false, 'msg' => '城市名不能为空'];
+    }
+    $prompt = "你是 SEO 专家。为城市「{$cityName}」（行业「{$industry}」）的独立分站生成 3 个 SEO 字段。\n\n要求：\n1. title_suffix：标题后缀，6~16 字，含「{$cityName}」与「{$industry}」，**用不同措辞**（如「- {$cityName}{$industry}」「{$cityName}{$industry}服务商」「{$cityName}专业{$industry}」「{$cityName}{$industry}一站式服务」等），**避免与别的城市用同一模板**。\n2. keywords：5~6 个搜索关键词，英文逗号分隔，必须包含「{$cityName}」+「{$industry}」，可加同义表达/相关业务/本地化场景词。\n3. description：60~100 字独立描述，含「{$cityName}」+「{$industry}」，强调本地化/一对一/上门服务等差异化承诺，**不要模板套话**。\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
+    $raw = ai_chat($apiUrl, $apiKey, $model, $prompt, 600);
+    if ($raw === null || $raw === '') {
+        return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）'];
+    }
+    // 容错解析：从 AI 返回中抽出 JSON 块
+    $jsonStr = $raw;
+    if (!preg_match('/\{[\s\S]*\}/u', $raw, $m)) {
+        return ['ok' => false, 'msg' => 'AI 返回非 JSON：' . mb_substr($raw, 0, 80)];
+    }
+    $jsonStr = $m[0];
+    $data = json_decode($jsonStr, true);
+    if (!is_array($data)) {
+        return ['ok' => false, 'msg' => 'JSON 解析失败：' . mb_substr($jsonStr, 0, 80)];
+    }
+    $ts   = trim((string)($data['title_suffix'] ?? ''));
+    $kw   = trim((string)($data['keywords'] ?? ''));
+    $desc = trim((string)($data['description'] ?? ''));
+    if ($ts === '' || $kw === '' || $desc === '') {
+        return ['ok' => false, 'msg' => 'AI 返回字段不全（需含 title_suffix/keywords/description）'];
+    }
+    // 兜底：确保标题/关键词含城市名
+    if (mb_strpos($ts, $cityName) === false) {
+        $ts = $cityName . $industry;
+    }
+    if (mb_strpos($kw, $cityName) === false) {
+        $kw = $cityName . $industry . ',' . $kw;
+    }
+    return ['ok' => true, 'title_suffix' => $ts, 'keywords' => $kw, 'description' => $desc, 'msg' => ''];
+}
+
 /** 一键生成全国分站独立 SEO（模板化填充空的 title_suffix/keywords/description，保证每城独立可收录） */
 function city_tdk_auto(string $industry = '网站建设'): array
 {
