@@ -529,7 +529,7 @@ function save_remote_image(string $remoteUrl, string $sourceName = '', int $fold
     if (!in_array($scheme, ['http', 'https'], true) || is_ssrf_host($remoteUrl)) {
         return ['ok' => false, 'msg' => '远程图片地址不被允许（仅支持公网 http/https）'];
     }
-    $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 60, 'header' => "User-Agent: Mozilla/5.0\r\n"]]);
+    $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 300, 'header' => "User-Agent: Mozilla/5.0\r\n"]]);
     $bin = @file_get_contents($remoteUrl, false, $ctx);
     if ($bin === false || strlen($bin) < 100) {
         return ['ok' => false, 'msg' => '下载远程图片失败'];
@@ -1342,14 +1342,13 @@ function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt)
     }
     $item = $json['data'][0];
     $name = 'ai_' . mb_substr(preg_replace('/\s+/', '', $prompt), 0, 20);
-    // DALL·E-3 等返回远程 URL：优先下载到本地图片空间（不依赖第三方链接存活）
+    // DALL·E-3 等返回远程 URL：必须下载到本地图片空间（远程 URL 会失效，花了钱不能白花）
     if (!empty($item['url'])) {
         $saved = save_remote_image($item['url'], $name);
         if ($saved['ok']) {
             return ['ok' => true, 'path' => $saved['path'], 'msg' => ''];
         }
-        // 下载本地失败：降级直接使用中转回传的远程 URL（只要回传了就入库，图不丢失）
-        return ['ok' => true, 'path' => $item['url'], 'msg' => '（本地下载失败，已使用远程图链）'];
+        return $fail('图片下载失败（图必须本地保存）：' . $saved['msg']);
     }
     // gpt-image-1 等返回 base64：直接解码落库
     if (!empty($item['b64_json'])) {
