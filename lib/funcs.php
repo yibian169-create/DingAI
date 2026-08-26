@@ -365,6 +365,23 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if ($raw === null || $raw === '') {
         return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）', 'log' => 'httpCode=' . $httpCode . '; raw.len=' . strlen((string)$raw)];
     }
+    // 检测 HTML 错误页（API 服务挂掉/地址错/Key 过期/余额不足 都会返回 HTML 而非 JSON）
+    $rawTrim = ltrim((string)$raw);
+    if (stripos($rawTrim, '<!doctype') === 0 || stripos($rawTrim, '<html') === 0 || stripos($rawTrim, '<br') === 0) {
+        // 提取 HTML 中的错误标题/关键信息（如 401 Unauthorized / 余额不足）
+        $htmlHint = '';
+        if (preg_match('/<title>([^<]+)<\/title>/i', (string)$raw, $mm)) { $htmlHint = $mm[1]; }
+        elseif (preg_match('/<b>([^<]{4,80})<\/b>/i', (string)$raw, $mm)) { $htmlHint = $mm[1]; }
+        elseif (preg_match('/<\b>([^<]{4,80})/i', (string)$raw, $mm)) { $htmlHint = $mm[1]; }
+        $hint = $htmlHint !== '' ? '（' . $htmlHint . '）' : '';
+        @error_log('[ai_city_tdk] city=' . $cityName . ' industry=' . $industry . ' httpCode=' . $httpCode . ' HTML 返回' . $hint . ' raw.head=' . str_replace(["\r", "\n"], ' ', mb_substr((string)$raw, 0, 200)));
+        return ['ok' => false, 'msg' => 'AI 接口返回 HTML 错误页（httpCode=' . $httpCode . '）' . $hint . ' — 请检查 API 地址/Key/余额/中转服务状态', 'log' => 'http_code=' . $httpCode];
+    }
+    // 4xx/5xx 非 JSON 也按 HTTP 错误处理
+    if ($httpCode >= 400 && $httpCode < 600) {
+        @error_log('[ai_city_tdk] city=' . $cityName . ' industry=' . $industry . ' httpCode=' . $httpCode . ' raw.head=' . str_replace(["\r", "\n"], ' ', mb_substr((string)$raw, 0, 200)));
+        return ['ok' => false, 'msg' => 'AI 接口 HTTP ' . $httpCode . '：' . str_replace(["\r", "\n"], ' ', mb_substr((string)$raw, 0, 100)), 'log' => 'http_code=' . $httpCode];
+    }
     // 记录首次原始返回到 PHP 错误日志（排查 AI 返回格式异常用，宝塔 → 软件商店 → PHP → 错误日志可看）
     if (function_exists('error_log')) {
         @error_log('[ai_city_tdk] city=' . $cityName . ' industry=' . $industry . ' httpCode=' . $httpCode . ' raw.len=' . strlen((string)$raw) . ' raw.head=' . str_replace(["\r", "\n"], ' ', mb_substr((string)$raw, 0, 200)));
