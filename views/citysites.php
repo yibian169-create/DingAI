@@ -101,7 +101,6 @@ foreach ($list as $c) {
     }
 }
 // 按省份中文排序（北京/上海/天津/重庆 直辖市置顶，其他按拼音）
-usort($grouped, null); // 让 PHP 按 key 排序
 ksort($grouped);
 // 直辖市置顶
 $top = ['北京','上海','天津','重庆'];
