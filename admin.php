@@ -61,8 +61,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($m, $csrf_protected, true,
 }
 
 /* ---------- 登录 / 登出（超管单通道） ---------- */
+/* ---------- 滑动验证：生成 token（登录页加载时调用） ---------- */
+if ($m === 'captcha_new') {
+    header('Content-Type: application/json; charset=utf-8');
+    $token = bin2hex(random_bytes(16));
+    $_SESSION['captcha_token'] = $token;
+    $_SESSION['captcha_pass']  = false;
+    echo json_encode(['ok' => true, 'token' => $token]);
+    exit;
+}
+
 if ($m === 'login') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // 滑动验证（后台设置 login_captcha 可关闭；防暴力破解）
+        if (setting('login_captcha', '1') === '1') {
+            $cap = json_decode((string)($_POST['captcha'] ?? ''), true);
+            $capToken = (string)($_POST['captcha_token'] ?? '');
+            $capOk = is_array($cap)
+                && $capToken !== '' && !empty($_SESSION['captcha_token'])
+                && hash_equals((string)$_SESSION['captcha_token'], $capToken)
+                && (int)($cap['time'] ?? 0) >= 250 && (int)($cap['time'] ?? 0) <= 20000
+                && (float)($cap['ratio'] ?? 0) >= 0.93
+                && (int)($cap['points'] ?? 0) >= 3;
+            if (!$capOk) {
+                render('login.php', ['err' => '请先完成滑动验证']);
+                exit;
+            }
+            unset($_SESSION['captcha_token'], $_SESSION['captcha_pass']);
+        }
         $user = trim($_POST['username'] ?? '');
         $pass = $_POST['password'] ?? '';
         $row = DB::one('SELECT * FROM admin_users WHERE username=?', [$user]);
@@ -1224,8 +1250,14 @@ if ($m === 'settings_save') {
         'lang_home','lang_more','lang_contact','lang_consult','lang_read_more','lang_empty',
         // 其它
         'beian','copyright_year',
+        // 安全
+        'login_captcha',
     ];
     foreach ($keys as $k) {
+        if ($k === 'login_captcha') { // 复选框：未勾选时 POST 无该字段，需显式写 0
+            save_setting($k, isset($_POST[$k]) ? '1' : '0');
+            continue;
+        }
         if (isset($_POST[$k])) {
             // UPSERT（按站点）：key 不存在时自动插入
             DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, $k, trim($_POST[$k])]);

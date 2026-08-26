@@ -175,6 +175,12 @@ $themes = [
   </div>
 
   <div class="tpl-panel">
+    <h3>后台安全</h3>
+    <p class="desc">登录页滑动验证（防暴力破解；需要频繁测试时可关闭）</p>
+    <label class="switch"><input type="checkbox" name="login_captcha" value="1" <?= ($data['login_captcha'] ?? '1') === '1' ? 'checked' : '' ?>> 启用后台登录滑动验证</label>
+  </div>
+
+  <div class="tpl-panel">
     <h3>全国分站开关</h3>
     <p class="desc">开启后前台自动启用分站 SEO（标题/关键词按城市替换）。详细城市管理请到「全国分站」菜单</p>
     <p><a href="admin.php?m=citysites" class="btn btn-p" style="display:inline-block;text-decoration:none">前往全国分站管理 →</a></p>
