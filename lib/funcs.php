@@ -1469,6 +1469,48 @@ function ai_insert_image(string $html, string $imgTag, int $idx): string
 }
 
 /**
+ * 为已保存的文章单独补 AI 插图（写文与配图解耦）：
+ * 读文章 → 生成 N 张图插入正文 → 更新 content/cover → 返回新内容
+ */
+function ai_illustrate_article(int $articleId, int $count = 2): array
+{
+    $sid = current_site_id();
+    $row = DB::one('SELECT id, title, content, cover FROM articles WHERE id=? AND site_id=?', [$articleId, $sid]);
+    if (!$row) {
+        return ['ok' => false, 'msg' => '文章不存在或不属于当前站点'];
+    }
+    $imgUrl   = setting('ai_img_url', '');
+    $imgKey   = setting('ai_img_key', '');
+    $imgModel = setting('ai_img_model', 'dall-e-3');
+    if ($imgUrl === '' || $imgKey === '') {
+        return ['ok' => false, 'msg' => '未配置生图 API（生图地址/Key 为空）——写作 API 不能生图，需在「API 配置」单独填写生图地址/Key/模型'];
+    }
+    $content = (string)$row['content'];
+    $cover   = (string)$row['cover'];
+    $title   = (string)$row['title'];
+    $gist = mb_substr(trim(strip_tags($content)), 0, 60);
+    $imgCount = 0;
+    $imgErr = '';
+    $count = max(1, min(4, $count));
+    for ($i = 0; $i < $count; $i++) {
+        $r = ai_image($imgUrl, $imgKey, $imgModel, "为一篇关于「{$title}」的中文文章配一张写实风格配图，主题：{$gist}，第" . ($i + 1) . '张');
+        if ($r['ok']) {
+            $tag = '<img src="' . $r['path'] . '" style="max-width:100%;border-radius:8px;margin:14px 0"><br>';
+            $content = ai_insert_image($content, $tag, $i);
+            if ($i === 0) {
+                $cover = $r['path']; // 封面取第一张插图
+            }
+            $imgCount++;
+        } else {
+            $imgErr = '第' . ($i + 1) . '张插图失败：' . $r['msg'];
+            break;
+        }
+    }
+    DB::run('UPDATE articles SET content=?, cover=? WHERE id=? AND site_id=?', [$content, $cover, $articleId, $sid]);
+    return ['ok' => true, 'title' => $title, 'content' => $content, 'cover' => $cover, 'img_count' => $imgCount, 'img_err' => $imgErr];
+}
+
+/**
  * 网页伪 Cron：前台访问时检查是否到自动发文时间点，到则生成并发布一篇。
  * 防重复：ai_post_log 记录今日已用关键词；关键词池循环。
  */

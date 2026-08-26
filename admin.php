@@ -34,7 +34,7 @@ $sid = current_site_id();
 /* ---------- CSRF 守卫：所有写操作 POST 动作必须携带有效 token ---------- */
 $csrf_protected = [
     'category_save', 'category_del', 'article_save', 'article_del', 'article_toggle',
-    'api_save', 'api_fetch_models', 'ai_save_api', 'ai_seo', 'ai_geo', 'ai_plan', 'ai_generate', 'ai_post_now',
+    'api_save', 'api_fetch_models', 'ai_save_api', 'ai_seo', 'ai_geo', 'ai_plan', 'ai_generate', 'ai_illustrate', 'ai_post_now',
     'geo_advert_save', 'geo_generate', 'geo_generate_batch', 'geo_sync_article', 'geo_del',
     'geo_kw_distill', 'geo_kw_del', 'geo_kw_feed', 'geo_kb_add', 'geo_kb_del',
     'geo_eeat', 'geo_schema', 'geo_uniq', 'geo_distribute',
@@ -629,6 +629,23 @@ if ($m === 'ai_generate') {
     }
     $r = ai_build_article($topic, $words, $tone, $extra, $withImg, $doSeo, $doGeo);
     echo json_encode($r, JSON_UNESCAPED_UNICODE);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+    exit;
+}
+
+if ($m === 'ai_illustrate') {
+    require_admin();
+    // 为已保存的文章单独补 AI 插图（写文与配图解耦，避免一次请求等待过久）
+    if (function_exists('ob_start')) { @ob_start(); }
+    header('Content-Type: application/json; charset=utf-8');
+    $articleId = (int)($_POST['article_id'] ?? 0);
+    $count = max(1, min(4, (int)($_POST['count'] ?? 2)));
+    if ($articleId <= 0) {
+        echo json_encode(['ok' => false, 'msg' => '请先保存文章，再为文章配图']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    }
+    echo json_encode(ai_illustrate_article($articleId, $count), JSON_UNESCAPED_UNICODE);
     if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
 }

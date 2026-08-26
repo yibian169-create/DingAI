@@ -56,7 +56,7 @@
             </div>
             <div class="field"><label>补充要求（可选）</label><textarea id="extra" placeholder="结尾加引导加微信话术；3 个小标题分段"></textarea></div>
 
-            <label class="switch"><input type="checkbox" id="genImg" checked> ✨ 已配置生图 API 时，写完后根据文章大意自动插图 2 张（未配置则文章不带任何插图）</label>
+            <div class="note" style="margin:8px 0">💡 写文不带图（更快）。保存文章后点「✨ AI 配图」按钮，为文章单独补 AI 插图（封面自动取第一张图）。</div>
             <label class="switch"><input type="checkbox" id="genCensor" checked> 自动过滤敏感词（违禁/政治/低俗/暴力，米字代替）</label>
             <label class="switch"><input type="checkbox" id="genPublish" checked> 生成后直接发布</label>
             <label class="switch"><input type="checkbox" id="genSeo" checked> 🔍 自动生成 SEO（标题/关键词/描述）</label>
@@ -65,9 +65,14 @@
             <div class="note">未填写「生图 API 地址 + Key」→ 文章纯文字无插图；封面自动取正文第一张图（无图则列表页无封面）。</div>
 
             <div class="ai-actions">
-              <button class="btn btn-p" id="genBtn" onclick="gen()">✨ 一键生成（文章+插图）</button>
+              <button class="btn btn-p" id="genBtn" onclick="gen()">✨ 一键生成</button>
             </div>
             <div class="gen-status" id="status"><span class="spinner"></span><span id="statusText">AI 正在创作中…</span></div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+              <button type="button" class="btn btn-s" id="illustrateBtn" onclick="aiIllustrate()">✨ AI 配图</button>
+              <span class="tip" style="font-size:12px;color:var(--muted)">给当前文章补 AI 插图（需先保存文章）</span>
+              <span class="tip" id="illustrateStatus" style="font-size:12px;color:var(--muted)"></span>
+            </div>
           </div>
           <!-- /AI 自动写专属配置区 -->
 
@@ -134,6 +139,7 @@
 
             <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
               <button class="btn btn-p" type="submit">💾 保存文章</button>
+              <button type="button" class="btn btn-s" onclick="aiIllustrate()">✨ AI 配图（补插图）</button>
               <span class="badge ok" id="censorBadge">敏感词检测：通过</span>
             </div>
           <?= csrf_field() ?>
@@ -309,8 +315,7 @@ function gen(){
       statusText=document.getElementById('statusText'),
       topic=document.getElementById('topic').value.trim();
   if(!topic){ alert('请输入主题/关键词'); return; }
-  var genImg=document.getElementById('genImg').checked,
-      genCensor=document.getElementById('genCensor').checked,
+  var genCensor=document.getElementById('genCensor').checked,
       genPublish=document.getElementById('genPublish').checked,
       genSeo=document.getElementById('genSeo').checked,
       genGeo=document.getElementById('genGeo').checked,
@@ -319,7 +324,7 @@ function gen(){
       extra=document.getElementById('extra').value.trim();
   btn.disabled=true; status.classList.add('show'); statusText.textContent='① AI 正在写文章…';
   var fd=new FormData();
-  fd.append('topic',topic); fd.append('words',words); fd.append('tone',tone); fd.append('extra',extra); fd.append('with_img',genImg?'1':'0'); fd.append('seo',genSeo?'1':'0'); fd.append('geo',genGeo?'1':'0');
+  fd.append('topic',topic); fd.append('words',words); fd.append('tone',tone); fd.append('extra',extra); fd.append('with_img','0'); fd.append('seo',genSeo?'1':'0'); fd.append('geo',genGeo?'1':'0');
   fetch('admin.php?m=ai_generate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
     if(!r.ok){ statusText.textContent='⚠ '+r.msg; btn.disabled=false; return; }
     var content=r.content;
@@ -345,7 +350,7 @@ function gen(){
     var seoTip=genSeo?' SEO':'', geoTip=genGeo?' GEO':'';
     if(r.img_count>0){ statusText.textContent='✅ 文章+'+r.img_count+'张插图已完成（'+seoTip+geoTip+' 已自动生成）'; }
     else if(r.img_err){ statusText.textContent='✅ 文章已完成（'+seoTip+geoTip+' 已自动生成），⚠ 插图失败：'+r.img_err; }
-    else { statusText.textContent='✅ 文章已完成（'+seoTip+geoTip+' 已自动生成；未配置生图 API，纯文字无插图）'; }
+    else { statusText.textContent='✅ 文章已完成（'+seoTip+geoTip+' 已自动生成；纯文字，保存后点「✨ AI 配图」补插图）'; }
     // 勾选"生成后直接发布"且为新建文章时，自动提交保存并发布
     if(genPublish){
       var fid=document.getElementById('f_id').value;
@@ -359,6 +364,32 @@ function gen(){
     }
     btn.disabled=false;
   }).catch(e=>{ statusText.textContent='⚠ 请求失败：'+e.message; btn.disabled=false; });
+}
+
+/* ---------- AI 配图（为已保存文章单独补插图，写文与配图解耦） ---------- */
+function aiIllustrate(){
+  var fid=document.getElementById('f_id').value;
+  var st=document.getElementById('illustrateStatus');
+  if(!st){ return; }
+  if(!fid || fid==='0'){ st.textContent='⚠ 请先点「💾 保存文章」把文章存起来，再配图'; return; }
+  if(!confirm('为当前文章生成 2 张 AI 插图并插入正文？\n（约 30~120 秒，期间请勿关闭页面）')) return;
+  var btn=document.querySelector('#illustrateBtn');
+  if(btn) btn.disabled=true;
+  st.textContent='⏳ 正在生成插图（约 30~120 秒）…';
+  var fd=new FormData();
+  fd.append('article_id', fid);
+  fd.append('count', '2');
+  fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
+    if(btn) btn.disabled=false;
+    if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
+    if(r.img_count>0){
+      QEditor.set('f_content', r.content);
+      if(r.cover) document.getElementById('f_cover').value=r.cover;
+      st.textContent='✅ 已插入 '+r.img_count+' 张插图（正文与封面已更新）';
+    } else {
+      st.textContent='⚠ 插图失败：'+r.img_err;
+    }
+  }).catch(e=>{ if(btn) btn.disabled=false; st.textContent='⚠ 请求失败：'+e.message; });
 }
 
 /* ---------- AI SEO / GEO 共用接口 ---------- */
