@@ -334,8 +334,27 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if ($cityName === '') {
         return ['ok' => false, 'msg' => '城市名不能为空'];
     }
-    $prompt = "你是 SEO 专家。为城市「{$cityName}」（行业「{$industry}」）的独立分站生成 3 个 SEO 字段。\n\n【严格格式要求，硬性限制，违反即作废】\n\n1. title_suffix（**6~12 字，硬性！超过 12 字视为无效**）\n   ✅ 正确格式：`- {城市}{服务}`，其中「服务」是 2~6 字的简洁短语（一个名词/短语，禁止堆叠）\n   ✅ 正确示例：\n     `- 北京AI孵化`\n     `- 北京企业AI服务`\n     `- 北京AI落地服务`\n     `- 北京AI定制中心`\n     `- 北京AI解决方案`\n   ❌ 错误示例（堆砌/超长/混描述）：\n     `- 北京电商+AI孵化-工厂企业AI员工定制专家落地行`（堆砌多个词）\n     `北京专业AI孵化本地化服务一对一咨询`（超过 12 字）\n     `- 北京AI孵化-工厂企业AI员工定制服务`（混入了 description 内容）\n   规则：只能一段 `- {城市}{服务}`，服务部分用一个简洁短语，**禁止堆叠关键词**\n\n2. keywords（5~6 个，英文逗号分隔，必须含「{$cityName}」与「{$industry}」）\n   ✅ 示例：`北京AI孵化,北京企业AI服务,北京AI落地,北京AI员工定制,北京AI解决方案,北京AI开发`\n\n3. description（60~100 字，一段独立描述）\n   含「{$cityName}」+「{$industry}」，强调本地化/一对一/上门服务，**不能与 title_suffix 重复内容**\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
-    $raw = ai_chat($apiUrl, $apiKey, $model, $prompt, 600);
+    // 词组选词库（每类多选一，让 AI 每城自由组合，避免所有城市用同一模板）
+    $tplWords = [
+        'obj' => ['企业', '工厂', '商家', '老板', '团队', '本地', '公司'],
+        'biz' => [$industry, 'AI孵化', 'AI定制', 'AI方案', 'AI落地', 'AI培训', 'AI服务', 'AI开发', 'AI应用'],
+        'form' => ['服务', '中心', '平台', '方案', '渠道', '团队', '工厂'],
+        'mod' => ['落地', '本地', '上门', '一对一', '专业', '本地化', '部署'],
+    ];
+    $prompt = "你是 SEO 专家。为城市「{$cityName}」生成 3 个 SEO 字段，行业主题是「{$industry}」。\n\n【title_suffix 严格规范 · 必须 3~4 个词组拼接，每城组合不同】\n\n格式：`- {城市}{A}{B}{C}{D}`（共 8~14 字）\n\n词组选词库（每类**只选 1 个**，且每城组合必须不同）：\n- A 服务对象：企业 / 工厂 / 商家 / 老板 / 团队 / 本地 / 公司\n- B 核心业务：「{$industry}」/ AI孵化 / AI定制 / AI方案 / AI落地 / AI培训 / AI服务 / AI开发 / AI应用\n- C 服务形态：服务 / 中心 / 平台 / 方案 / 渠道 / 团队 / 工厂\n- D 修饰词（可选）：落地 / 本地 / 上门 / 一对一 / 专业 / 本地化 / 部署\n\n✅ 正确示例（每城组合不同）：\n  北京 → `- 北京企业AI孵化方案`（企业+AI孵化+方案）\n  上海 → `- 上海工厂AI定制中心`（工厂+AI定制+中心）\n  广州 → `- 广州商家AI落地服务`（商家+AI落地+服务）\n  深圳 → `- 深圳团队AI员工平台`（团队+AI员工+平台）\n  杭州 → `- 杭州本地AI培训落地`（本地+AI培训+落地）\n  成都 → `- 成都企业AI开发服务`（企业+AI开发+服务）\n  武汉 → `- 武汉工厂AI方案中心`（工厂+AI方案+中心）\n  西安 → `- 西安专业AI应用平台`（专业+AI应用+平台）\n\n❌ 错误示例（千篇一律/单薄/堆砌/超长）：\n  - 北京AI定制中心、上海AI定制中心、广州AI定制中心（每城都「AI定制中心」，单调）\n  - 北京AI（单薄，只有 1 个词组）\n  - 北京企业AI孵化专业本地化落地服务（超过 14 字）\n  - 北京AI孵化-工厂企业AI员工定制专家落地行（堆砌符号）\n\n**【反糊弄 · 硬要求】**：每城组合必须不同，绝不出现"XX+同一词+同一词"模式。\n\n【keywords 规范】5~6 个，英文逗号分隔，必须含「{$cityName}」与「{$industry}」\n示例：`北京AI孵化,北京企业AI服务,北京AI落地,北京AI员工定制,北京AI解决方案,北京AI开发`\n\n【description 规范】60~100 字，一段独立描述，强调本地化/一对一/上门，**不能与 title_suffix 重复**\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
+    // 直接用 ai_http_post 自定义 temperature=1.1（提高多样性，避免 AI 重复同一组合）
+    $apiUrl = rtrim($apiUrl, '/');
+    if (!preg_match('#/chat/completions$#', $apiUrl)) {
+        $apiUrl .= '/chat/completions';
+    }
+    $body = json_encode([
+        'model' => $model,
+        'messages' => [['role' => 'user', 'content' => $prompt]],
+        'max_tokens' => 600,
+        'temperature' => 1.1,
+    ], JSON_UNESCAPED_UNICODE);
+    $httpCode = 0;
+    $raw = ai_http_post($apiUrl, $apiKey, $body, $httpCode);
     if ($raw === null || $raw === '') {
         return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）'];
     }
@@ -370,13 +389,12 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if (mb_strpos($ts, '- ') !== 0 && mb_strpos($ts, '-') === 0) {
         $ts = '- ' . ltrim(mb_substr($ts, 1));
     }
-    // 3) 截断到 14 字（防止 AI 输出过长）
-    if (mb_strlen($ts) > 14) {
-        // 尝试截到第 14 字附近的"- "或服务名词边界
-        $cut = mb_substr($ts, 0, 14);
+    // 3) 截断到 16 字（防止 AI 输出过长；新 prompt 允许 14 字完整 3~4 词组）
+    if (mb_strlen($ts) > 16) {
+        $cut = mb_substr($ts, 0, 16);
         $ts = rtrim($cut, '、, ,-+');
         if (mb_strpos($ts, $cityName) === false) {
-            $ts = '-' . $cityName . $industry;
+            $ts = '-' . $cityName . $industry . '服务';
         }
     }
     // 4) 必须 - 开头
@@ -386,6 +404,12 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     // 5) 必须含城市名；缺失则强制注入
     if (mb_strpos($ts, $cityName) === false) {
         $ts = '-' . $cityName . $industry;
+    }
+    // 6) 防糊弄：服务部分（去掉 "- " 和城市名）必须 ≥ 4 字；过短则补足"服务中心"
+    $svc = trim(mb_substr($ts, 2 + mb_strlen($cityName)));
+    if (mb_strlen($svc) < 4) {
+        $svc = $svc . '服务中心';
+        $ts = '-' . $cityName . $svc;
     }
     // keywords 限制最多 6 个（按逗号/中文逗号切分）
     $kwParts = preg_split('/[,,]/u', $kw) ?: [];
