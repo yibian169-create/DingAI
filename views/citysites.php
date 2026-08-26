@@ -78,16 +78,46 @@
     <?php if (!empty($flash)): ?><div class="msg"><?= e($flash) ?></div><?php endif; ?>
 
 <?php
+// 0) 老库兼容：强制确保 city_sites 新增字段已 ALTER（即便 ensure_schema 漏跑也能兜底）
+//    —— 这是 views 层的二次保险，确保数据齐
+$_schemaFixes = [
+    'province'        => 'ALTER TABLE city_sites ADD COLUMN province VARCHAR(20) NOT NULL DEFAULT "" COMMENT "所属省份" AFTER pinyin',
+    'content'         => 'ALTER TABLE city_sites ADD COLUMN content MEDIUMTEXT COMMENT "分站专属正文" AFTER province',
+    'content_title'   => 'ALTER TABLE city_sites ADD COLUMN content_title VARCHAR(200) NOT NULL DEFAULT "" COMMENT "分站内容标题" AFTER content',
+    'content_at'      => 'ALTER TABLE city_sites ADD COLUMN content_at DATETIME DEFAULT NULL COMMENT "内容生成时间" AFTER content_title',
+    'content_status'  => 'ALTER TABLE city_sites ADD COLUMN content_status TINYINT NOT NULL DEFAULT 0 COMMENT "内容状态 0未/1已/2中/3失败" AFTER content_at',
+    'content_err'     => 'ALTER TABLE city_sites ADD COLUMN content_err VARCHAR(255) NOT NULL DEFAULT "" COMMENT "生成失败原因" AFTER content_status',
+    'article_id'      => 'ALTER TABLE city_sites ADD COLUMN article_id INT UNSIGNED NOT NULL DEFAULT 0 COMMENT "关联文章ID" AFTER content_err',
+];
+if (!isset($_CITYSITES_SCHEMA_FIXED)) {
+    foreach ($_schemaFixes as $_col => $_sql) {
+        try {
+            DB::one("SELECT `$_col` FROM city_sites LIMIT 1");
+        } catch (Throwable $_e) {
+            try { DB::run($_sql); } catch (Throwable $_e2) { /* 列已存在 或权限不足，忽略 */ }
+        }
+    }
+    $_CITYSITES_SCHEMA_FIXED = true;
+}
+unset($_schemaFixes, $_col, $_sql, $_e, $_e2);
+
 // 1) 计算统计：按城市 status/content_status/tkd 三维度聚合
 $statsAll = ['total' => 0, 'on' => 0, 'content_ok' => 0, 'content_empty' => 0, 'content_bad' => 0, 'content_run' => 0, 'seo_ok' => 0, 'seo_empty' => 0];
 $grouped = []; // province => [cities]
 $overall = ['total' => 0, 'content_ok' => 0, 'content_empty' => 0, 'content_bad' => 0, 'content_run' => 0, 'seo_ok' => 0, 'seo_empty' => 0];
+
+// 全国分站重构（2025）：老库兼容 —— 即使 ensure_schema 漏补某新字段，视图也能跑
+//（不让 "Undefined array key province" Warning 渲染到 HTML 表格里）
+$_reqCols = ['province','content','content_title','content_at','content_status','content_err','article_id'];
+foreach ($list as &$_c) { foreach ($_reqCols as $_col) { if (!array_key_exists($_col, $_c)) { $_c[$_col] = ''; } } }
+unset($_c, $_reqCols, $_col);
+
 foreach ($list as $c) {
     $prov = trim((string)($c['province'] ?? ''));
     if ($prov === '') { $prov = '未分组'; }
     $grouped[$prov][] = $c;
     $statsAll['total']++;
-    if ((int)$c['status'] === 1) { $statsAll['on']++; }
+    if ((int)($c['status'] ?? 0) === 1) { $statsAll['on']++; }
     $cs = (int)($c['content_status'] ?? 0);
     if ($cs === 1 && trim((string)($c['content'] ?? '')) !== '') { $statsAll['content_ok']++; $overall['content_ok']++; }
     elseif ($cs === 3) { $statsAll['content_bad']++; $overall['content_bad']++; }
@@ -274,32 +304,32 @@ $grouped = $grouped + $rest;
                   </tr></thead>
                   <tbody>
                   <?php foreach ($cities as $c): ?>
-                    <tr data-cid="<?= (int)$c['id'] ?>" data-city="<?= e($c['city']) ?>" data-pinyin="<?= e($c['pinyin']) ?>" data-province="<?= e($c['province']) ?>" data-status="<?= (int)$c['status'] ?>">
-                      <td><span class="ct"><?= e($c['city']) ?></span>
-                        <?php if ((int)$c['status'] === 0): ?><span class="badge empty" style="margin-left:6px">停用</span><?php endif; ?>
+                    <tr data-cid="<?= (int)($c['id'] ?? 0) ?>" data-city="<?= e($c['city'] ?? '') ?>" data-pinyin="<?= e($c['pinyin'] ?? '') ?>" data-province="<?= e($c['province'] ?? '') ?>" data-status="<?= (int)($c['status'] ?? 0) ?>">
+                      <td><span class="ct"><?= e($c['city'] ?? '') ?></span>
+                        <?php if ((int)($c['status'] ?? 0) === 0): ?><span class="badge empty" style="margin-left:6px">停用</span><?php endif; ?>
                       </td>
-                      <td><code class="py"><?= e($c['pinyin']) ?></code></td>
+                      <td><code class="py"><?= e($c['pinyin'] ?? '') ?></code></td>
                       <td>
 <?php $cs = (int)($c['content_status'] ?? 0); ?>
 <?php if ($cs === 1 && trim((string)($c['content'] ?? '')) !== ''): ?>
                         <span class="badge ok">✓ 已生成</span>
-                        <?php if (trim((string)$c['content_title']) !== ''): ?>
-                        <div style="font-size:11.5px;color:var(--muted);margin-top:4px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= e($c['content_title']) ?>"><?= e(mb_substr($c['content_title'], 0, 26)) ?></div>
+                        <?php if (trim((string)($c['content_title'] ?? '')) !== ''): ?>
+                        <div style="font-size:11.5px;color:var(--muted);margin-top:4px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= e($c['content_title'] ?? '') ?>"><?= e(mb_substr((string)($c['content_title'] ?? ''), 0, 26)) ?></div>
                         <?php endif; ?>
 <?php elseif ($cs === 2): ?>
                         <span class="badge run">⏳ 生成中</span>
 <?php elseif ($cs === 3): ?>
                         <span class="badge bad">⚠ 失败</span>
                         <?php if (!empty($c['content_err'])): ?>
-                        <div class="err" title="<?= e($c['content_err']) ?>"><?= e(mb_substr($c['content_err'], 0, 32)) ?></div>
+                        <div class="err" title="<?= e($c['content_err'] ?? '') ?>"><?= e(mb_substr((string)($c['content_err'] ?? ''), 0, 32)) ?></div>
                         <?php endif; ?>
 <?php else: ?>
                         <span class="badge empty">○ 待生成</span>
 <?php endif; ?>
                       </td>
-                      <td><span class="tsuf" title="<?= e($c['title_suffix']) ?>"><?= e($c['title_suffix'] ?: '—') ?></span></td>
+                      <td><span class="tsuf" title="<?= e($c['title_suffix'] ?? '') ?>"><?= e(trim((string)($c['title_suffix'] ?? '')) !== '' ? (string)($c['title_suffix'] ?? '') : '—') ?></span></td>
                       <td>
-<?php $seoOK = trim((string)$c['title_suffix']) !== '' && trim((string)$c['keywords']) !== ''; ?>
+<?php $seoOK = trim((string)($c['title_suffix'] ?? '')) !== '' && trim((string)($c['keywords'] ?? '')) !== ''; ?>
                         <?php if ($seoOK): ?><span class="badge seo">✓ 已填</span><?php else: ?><span class="badge empty">空</span><?php endif; ?>
                       </td>
                       <td style="font-size:11.5px;color:var(--muted)">
@@ -308,14 +338,14 @@ $grouped = $grouped + $rest;
                       <td>
                         <div class="cs-actions">
                           <a class="btn btn-s" href="<?= e(city_url($c)) ?>" target="_blank">访问</a>
-                          <button class="btn btn-s" onclick="csEdit(<?= (int)$c['id'] ?>, '<?= e($c['city']) ?>')">编辑</button>
-<?php if ($cs === 1 && trim((string)$c['content']) !== ''): ?>
-                          <button class="btn btn-s" style="background:rgba(245,158,11,.15);color:#f59e0b;border:none" onclick="csRegenOne(<?= (int)$c['id'] ?>, '<?= e($c['city']) ?>', 1)">🔄 重新生成</button>
+                          <button class="btn btn-s" onclick="csEdit(<?= (int)($c['id'] ?? 0) ?>, '<?= e($c['city'] ?? '') ?>')">编辑</button>
+<?php if ($cs === 1 && trim((string)($c['content'] ?? '')) !== ''): ?>
+                          <button class="btn btn-s" style="background:rgba(245,158,11,.15);color:#f59e0b;border:none" onclick="csRegenOne(<?= (int)($c['id'] ?? 0) ?>, '<?= e($c['city'] ?? '') ?>', 1)">🔄 重新生成</button>
 <?php else: ?>
-                          <button class="btn btn-s" style="background:rgba(16,185,129,.15);color:#10b981;border:none" onclick="csRegenOne(<?= (int)$c['id'] ?>, '<?= e($c['city']) ?>', 0)">⚡ 立即生成</button>
+                          <button class="btn btn-s" style="background:rgba(16,185,129,.15);color:#10b981;border:none" onclick="csRegenOne(<?= (int)($c['id'] ?? 0) ?>, '<?= e($c['city'] ?? '') ?>', 0)">⚡ 立即生成</button>
 <?php endif; ?>
-                          <form method="post" action="admin.php?m=city_del" style="display:inline" onsubmit="return confirm('删除「<?= e($c['city']) ?>」分站？')">
-                            <input type="hidden" name="id" value="<?= (int)$c['id'] ?>">
+                          <form method="post" action="admin.php?m=city_del" style="display:inline" onsubmit="return confirm('删除「<?= e($c['city'] ?? '') ?>」分站？')">
+                            <input type="hidden" name="id" value="<?= (int)($c['id'] ?? 0) ?>">
                             <button class="btn btn-s btn-d" type="submit">删除</button>
                             <?= csrf_field() ?>
                           </form>
