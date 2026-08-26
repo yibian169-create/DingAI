@@ -169,18 +169,23 @@ $grouped = $grouped + $rest;
         </div>
 
         <div class="panel" style="border-color:var(--primary)">
-          <h2>② 分站顶部品牌横幅</h2>
+          <h2>② 分站顶部品牌横幅
+            <span style="color:var(--ok);font-size:11.5px;background:rgba(16,185,129,.12);padding:2px 8px;border-radius:8px;margin-left:6px;font-weight:500">直接输入保存</span>
+          </h2>
           <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
-            <strong>显示在每个城市分站页顶部</strong>，是强化品牌曝光的核心位置。
-            <br>📍 <strong>品牌名自动取自</strong>：<a href="admin.php?m=settings" style="color:var(--primary);text-decoration:underline"><strong>模板中心 → 基础设置 → 站点名称</strong></a>，无需在此处重复填写。
+            <strong>显示在每个城市分站页顶部</strong>。这是 SEO 友好的高频曝光位 —— 一般填 <strong>「客户意向搜索词」</strong>（如「7天上手 · 一对一上门 · 全国服务」），而不是公司站名（主站可不管品牌名）。
+            <br>📍 同步写入 <code>site_name</code>（AI 标题末尾品牌词也会用上）。
           </p>
-          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 16px;background:linear-gradient(115deg,#fde68a,#fbbf24);border-radius:8px;margin-bottom:12px">
-            <span style="font-size:13px;color:#451a03;font-weight:600">当前品牌名：</span>
-            <strong style="font-size:16px;color:#451a03;background:rgba(255,255,255,.5);padding:4px 12px;border-radius:6px"><?= e(setting('site_name', '得应盯')) ?></strong>
-            <a class="btn btn-s" href="admin.php?m=settings" style="background:rgba(69,26,3,.18);color:#451a03;border:none">⚙ 修改 →</a>
-          </div>
-          <details style="margin-top:8px;font-size:12.5px;color:var(--muted)">
-            <summary style="cursor:pointer;color:var(--primary);font-weight:600">▶ 还想加一行「运营通知」？（可选，公告没人看的话就别设）</summary>
+          <form method="post" action="admin.php?m=city_brand_save" style="display:flex;flex-direction:column;gap:10px">
+            <input type="text" name="city_banner_brand" value="<?= e(setting('city_banner_brand', '') !== '' ? setting('city_banner_brand', '') : setting('site_name', '')) ?>" placeholder="如：得应盯 · 7天上手 · 一对一上门 · 全国本地服务" maxlength="30" style="margin:0">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-p" type="submit">💾 保存并生效</button>
+              <span style="font-size:12px;color:var(--muted)">30 字以内 · 留空 = 隐藏该品牌横幅</span>
+            </div>
+            <?= csrf_field() ?>
+          </form>
+          <details style="margin-top:12px;font-size:12.5px;color:var(--muted)">
+            <summary style="cursor:pointer;color:var(--primary);font-weight:600">▶ 还想加一行「运营公告」？（可选，默认隐藏）</summary>
             <form method="post" action="admin.php?m=city_notice" style="margin-top:10px">
               <input type="text" name="notice" value="<?= e(setting('city_notice', '')) ?>" placeholder="如：全国分站批量建设中（默认隐藏，留空即可）" style="margin-bottom:10px">
               <button class="btn btn-p" type="submit">保存公告</button>

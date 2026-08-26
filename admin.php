@@ -43,7 +43,7 @@ $csrf_protected = [
     'product_save', 'product_del', 'product_toggle',
     'download_cat', 'download_cat_del', 'download_save', 'download_del', 'download_file_upload', 'download_desc_save',
     'folder_save', 'folder_del', 'upload_do', 'upload_del', 'upload_json',
-    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_content_run', 'city_content_save', 'city_clear_content', 'city_notice', 'city_save', 'city_del', 'city_clear_tdk', 'city_clear_all',
+    'city_enable', 'city_import', 'city_tdk_all', 'ai_city_tdk_one', 'city_content_run', 'city_content_save', 'city_clear_content', 'city_notice', 'city_brand_save', 'city_save', 'city_del', 'city_clear_tdk', 'city_clear_all',
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
@@ -1249,6 +1249,20 @@ if ($m === 'city_notice') {
     $notice = trim((string)($_POST['notice'] ?? ''));
     save_setting('city_notice', $notice);
     redirect('admin.php?m=citysites', '分站公告已保存' . ($notice === '' ? '（已清空，前台不显示公告）' : ''));
+}
+if ($m === 'city_brand_save') {
+    // ===== 全国分站重构（2025）：分站顶部 banner 品牌/意向词直接保存 =====
+    require_admin();
+    $brand = trim((string)($_POST['city_banner_brand'] ?? ''));
+    if (mb_strlen($brand) > 30) {
+        $brand = mb_substr($brand, 0, 30);
+    }
+    save_setting('city_banner_brand', $brand);
+    // 同时把这值也写入 settings.site_name 兜底（让 AI title_suffix 末尾品牌词也同步；如果主站站名不被外部使用，无副作用）
+    if ($brand !== '') {
+        save_setting('site_name', $brand);
+    }
+    redirect('admin.php?m=citysites', '分站顶部品牌横幅已保存 · 前台立即生效');
 }
 
 /* ---------- 自定义表单 ---------- */
