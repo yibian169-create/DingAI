@@ -48,7 +48,9 @@
                 <?= e($city['city'] . ($industry ?? '网站建设')) ?>是<?= e($site) ?>面向<?= e($city['city']) ?>本地客户提供的专属服务：涵盖<?= e($industry ?? '网站建设') ?>、企业官网定制、商城小程序、SEO 排名优化等，全部本地化团队跟进，<?= e($city['city']) ?>本地企业足不出户即可获得一线城市的建站服务标准。
             </div>
             <?php endif; ?>
-            <?php if (!empty($cityArts)): ?>
+            <?php /* ===== 全国分站重构（2025）：本地资讯仅展示「本城市专属文章」（标题含城市名），
+                     不展示全站全局文章 → 防止 300 城页面显示同一批文章被搜索引擎判重复 ===== */ ?>
+            <?php if (!empty($cityArts) && !empty($cityContent)): ?>
             <div style="margin-bottom:20px">
                 <h3 class="q-side__title" style="margin-bottom:12px"><i></i><?= e($city['city']) ?>本地资讯</h3>
                 <div class="q-news q-news--2">
@@ -72,11 +74,6 @@
                     </a>
                     <?php endforeach; ?>
                 </div>
-            </div>
-            <?php else: ?>
-            <div class="q-empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                <p><?= e($city['city']) ?>本地内容持续更新中，敬请期待</p>
             </div>
             <?php endif; ?>
             <?php /* 全国分站列表只在「导航 + 全国分站列表页」展示，此处把底部全量链接组替换为精简入口 */ ?>

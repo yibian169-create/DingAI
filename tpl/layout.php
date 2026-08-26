@@ -22,6 +22,15 @@ $contactMpQr   = !empty($S['contact_mp_qr']) ? $S['contact_mp_qr'] : '';
 <title><?= e($title) ?></title>
 <meta name="keywords" content="<?= e($kw ?? '') ?>">
 <meta name="description" content="<?= e($desc ?? '') ?>">
+<?php /* SEO 防重复（全国分站重构 2025）：
+   - $robots   : 空壳分站 noindex,follow；有独立内容分站 index,follow
+   - $canonical: 文章/产品详情 canonical 指向主站 URL（消除分站重复收录） */ ?>
+<?php if (!empty($robots)): ?>
+<meta name="robots" content="<?= e($robots) ?>">
+<?php endif; ?>
+<?php if (!empty($canonical)): ?>
+<link rel="canonical" href="<?= e($canonical) ?>">
+<?php endif; ?>
 <link rel="stylesheet" href="static/css/style.css">
 <?php $tc = get_theme_colors(setting('theme', 'aurora')); ?>
 <style>:root{--main-color:<?= e($tc[0]) ?>;--aux-color:<?= e($tc[1]) ?>;--accent-color:<?= e($tc[2]) ?>}</style>

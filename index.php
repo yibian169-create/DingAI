@@ -501,6 +501,9 @@ if ($act === 'detail') {
         'rel' => $rel, 'tags' => $tags, 'newsFoot' => $newsFoot,
         'aboutUrl' => $aboutUrl, 'contactUrl' => $contactUrl, 'cityLabel' => city_label(),
         'jsonLdScript' => $jsonLdScript,
+        // ===== SEO 防重复：文章/产品详情 canonical 指向主站 URL（不带 ?city=，防分站多入口重复收录）=====
+        'robots' => 'index,follow',
+        'canonical' => 'index.php?act=detail&type=' . urlencode($type) . '&id=' . (int)$row['id'],
     ]);
     exit;
 }
@@ -537,8 +540,20 @@ if ($act === 'city_home') {
     if ($desc === '') {
         $desc = $cityName . $industry . '服务商——' . $siteTitle . '专注' . $cityName . $industry . '、' . $cityName . '网站制作、' . $cityName . 'SEO优化，本地化一对一服务，欢迎咨询。';
     }
-    // 该城市内容聚合（标题含城市名的文章；配合「城市×行业批量发文」自动填充）
-    $cityArts = DB::all('SELECT * FROM articles WHERE status=1 AND site_id=? AND title LIKE ? ORDER BY id DESC LIMIT 8', [$sid, '%' . $cityName . '%']);
+    // ===== 全国分站 SEO 防重复（2025 重构）=====
+    // 1) 分站内容（独立差异化）：content 字段非空才认为"有料"，空壳分站 noindex 防站群惩罚
+    $cityContent     = (string)($city['content'] ?? '');
+    $cityContentTrim = trim($cityContent);
+    $hasCityContent  = $cityContentTrim !== '';
+    // 2) 本地资讯：只展示标题严格含该城市名的文章（不再用 LIKE %城市% 兜底拉全站文章 → 全国重复）
+    //    → 改为「仅当该城市 content 存在时才展示关联文章」，避免空壳分站 + 全局文章堆叠
+    $cityArts = [];
+    if ($hasCityContent) {
+        $cityArts = DB::all('SELECT * FROM articles WHERE status=1 AND site_id=? AND title LIKE ? ORDER BY id DESC LIMIT 8', [$sid, '%' . $cityName . '%']);
+    }
+    // 3) robots：空壳分站 noindex,follow（有独立内容才 index,follow）；canonical 指向分站自身 URL（避免多入口重复收录）
+    $robots = $hasCityContent ? 'index,follow' : 'noindex,follow';
+    $canonical = city_url($city); // 分站页 canonical = 该分站唯一 URL（防 ?city=xxx 与伪静态 /xxx/ 双入口）
     // 全部启用城市（城市间互链，避免孤儿页）
     $allCities = DB::all('SELECT * FROM city_sites WHERE status=1 AND site_id=? ORDER BY sort ASC, id ASC', [$sid]);
     // LocalBusiness 结构化数据（AI 问答可直接引用城市地址/电话）
@@ -560,8 +575,11 @@ if ($act === 'city_home') {
         'cities' => $allCities, 'cityArts' => $cityArts, 'site' => $siteTitle,
         'cat' => null, 'kw' => $kw, 'desc' => $desc, 'industry' => $industry,
         // ===== 全国分站重构（2025）：优先渲染分站自身 content（不再依赖 articles 表）=====
-        'cityContent' => (string)($city['content'] ?? ''),
+        'cityContent' => $cityContent,
         'cityContentTitle' => (string)($city['content_title'] ?? ''),
+        // ===== SEO 防重复：空壳 noindex + canonical 锚定分站自身 =====
+        'robots' => $robots,
+        'canonical' => $canonical,
         'newsFoot' => $newsFoot, 'aboutUrl' => $aboutUrl, 'contactUrl' => $contactUrl,
         'jsonLdScript' => '<script type="application/ld+json">' . $jsonLdScript . '</script>',
     ]);
