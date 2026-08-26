@@ -378,7 +378,6 @@ function aiIllustrate(){
   var st=document.getElementById('illustrateStatus');
   if(!st){ return; }
   if(!fid || fid==='0'){ st.textContent='⚠ 请先点「💾 保存文章」把文章存起来，再配图'; return; }
-  if(!confirm('为当前文章生成 2 张 AI 插图并插入正文？\n已加入后台队列自动处理（约 1 分钟/篇），无需等待。')) return;
   var btn=document.querySelector('#illustrateBtn');
   if(btn) btn.disabled=true;
   st.textContent='⏳ 正在加入队列…';
@@ -388,7 +387,7 @@ function aiIllustrate(){
   fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
     if(btn) btn.disabled=false;
     if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
-    st.textContent='✅ '+(r.msg||'已加入配图队列')+'；稍后刷新文章列表即可看到插图';
+    st.textContent='✅ '+(r.msg||'已加入配图队列')+'（约 1 分钟/篇）';
   }).catch(e=>{ if(btn) btn.disabled=false; st.textContent='⚠ 请求失败：'+e.message; });
 }
 
@@ -402,9 +401,7 @@ function aiBatchIllustrate(){
     if(!r.ok){ st.textContent='⚠ '+r.msg; return; }
     var list=r.list||[];
     if(list.length===0){ st.textContent='✅ 所有文章都已配图，无需处理'; return; }
-    if(!confirm('检测到 '+list.length+' 篇未配图文章，将全部加入 AI 配图队列。\n系统会在后台自动逐篇处理（约 1 分钟/篇），不占用当前操作。\n继续？')){
-      st.textContent='已取消（'+list.length+' 篇未配图）'; return;
-    }
+    st.textContent='⏳ 正在批量提交 '+list.length+' 篇文章到配图队列…';
     var i=0, okN=0, failN=0;
     (function next(){
       if(i>=list.length){
@@ -422,17 +419,22 @@ function aiBatchIllustrate(){
   }).catch(e=>{ st.textContent='⚠ 请求失败：'+e.message; });
 }
 
-/* ---------- 列表行单篇 AI 配图（入队） ---------- */
+/* ---------- 列表行单篇 AI 配图（入队，按钮即时反馈，零弹窗） ---------- */
 function aiIllustrateOne(btn){
   var id=btn.getAttribute('data-id');
   var title=btn.getAttribute('data-title')||'该文章';
-  if(!confirm('为《'+title+'》生成 2 张 AI 插图？\n已加入后台队列自动处理，无需等待。')) return;
   btn.disabled=true; var old=btn.textContent; btn.textContent='⏳';
   var fd=new FormData(); fd.append('article_id',id); fd.append('count','2');
   fetch('admin.php?m=ai_illustrate',{method:'POST',body:fd}).then(r=>r.json()).then(r=>{
-    btn.disabled=false; btn.textContent=old;
-    alert(r.ok ? '✅ '+(r.msg||'已加入配图队列，稍后刷新查看') : '⚠ '+r.msg);
-  }).catch(e=>{ btn.disabled=false; btn.textContent=old; alert('请求失败：'+e.message); });
+    btn.disabled=false;
+    if(r.ok){
+      btn.textContent='✅'; btn.style.color='#16a34a';
+      setTimeout(function(){ btn.textContent=old; btn.style.color=''; }, 1800);
+    } else {
+      btn.textContent='⚠'; btn.style.color='#dc2626';
+      setTimeout(function(){ btn.textContent=old; btn.style.color=''; }, 2200);
+    }
+  }).catch(e=>{ btn.disabled=false; btn.textContent='⚠'; setTimeout(function(){ btn.textContent=old; }, 2200); });
 }
 
 /* ---------- 配图队列状态提示（页面加载时显示待处理数量） ---------- */
