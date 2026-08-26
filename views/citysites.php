@@ -54,19 +54,11 @@
 </form>
         </div>
 
-        <div class="panel">
-          <h2>一键生成全部分站 SEO</h2>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">为尚未填写 SEO 的分站自动生成<strong>独立标题/关键词/描述</strong>（每城不同，百度收录必需）。已填写的分站保持不变。</p>
-          <form method="post" action="admin.php?m=city_tdk_all" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <input type="text" name="industry" value="网站建设" style="flex:1;min-width:180px" placeholder="行业词，如：网站建设 / SEO优化">
-            <button class="btn btn-p" type="submit">生成全部分站 SEO</button>
-          <?= csrf_field() ?>
-</form>
-        </div>
-
-        <div class="panel">
-          <h2>⚡ AI 智能生成 SEO <span style="color:var(--danger);font-size:11.5px;background:#fef2f2;padding:2px 8px;border-radius:8px;margin-left:6px;font-weight:500">更智能 · 防站群惩罚</span></h2>
-          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">用 AI 为每个城市独立写 SEO，<strong>意思一致但表达不同</strong>（避免统一模板被百度识别为站群）。已填过 SEO 的城市自动跳过（<strong>想强制覆盖</strong>：先到编辑表单清空该城的标题后缀，再来跑）。<br>每城约 3~5 秒，200 城约 15 分钟（DeepSeek 约 ¥0.1~0.2）。</p>
+        <div class="panel" style="border-color:var(--primary);box-background:var(--card)">
+          <h2>✨ 一键 AI 重新调整全部分站 SEO <span style="color:var(--danger);font-size:11.5px;background:#fef2f2;padding:2px 8px;border-radius:8px;margin-left:6px;font-weight:500">走 AI · 防站群惩罚</span></h2>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:12px">用 AI（DeepSeek 等写作 API）为每个城市<strong>独立写差异化 SEO</strong>，意思一致但表达不同——彻底告别"标题后缀全是 XX电商孵化"这种模板化站群。<br>
+          <strong>已填过 SEO 的城市自动跳过</strong>（<strong>想强制重新生成</strong>：先用右上角「🧹 清 SEO 字段」清空，再点本按钮即可）。<br>
+          每城约 3~5 秒，200 城约 15 分钟（DeepSeek 约 ¥0.1~0.2）。</p>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
             <input type="text" id="ctIndustry" value="网站建设" placeholder="行业词" style="flex:1;min-width:150px">
             <input type="number" id="ctMax" value="50" min="1" max="300" style="width:90px" placeholder="上限">
