@@ -190,7 +190,7 @@ $themes = [
   <div class="tpl-save-bar">
     <button type="submit" class="btn btn-p" style="padding:12px 36px;font-size:14.5px">保存本页配置</button>
   </div>
-<?= csrf_field() ?>
+  <?= csrf_field() ?>
 </form>
 
 <script>

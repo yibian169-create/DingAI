@@ -1461,6 +1461,8 @@ if ($m === 'settings_save') {
     } else {
         $redirect = 'admin.php?m=settings' . ($tab ? '&tab=' . urlencode($tab) : '');
     }
+    // 保存后立刻失效配置缓存，避免 PHP-FPM 同一 worker 重定向后读到旧空值
+    settings_clear_cache($sid);
     redirect($redirect, '配置已保存');
 }
 
@@ -1481,6 +1483,7 @@ if ($m === 'home_layout_save') {
     }
     $json = json_encode($layout, JSON_UNESCAPED_UNICODE);
     DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, 'home_layout', $json]);
+    settings_clear_cache($sid);
     redirect('admin.php?m=tpls&tab=diy', '首页布局已保存');
 }
 
@@ -1522,6 +1525,7 @@ if ($m === 'visual_home_save') {
     }
     $modJson = json_encode($clean, JSON_UNESCAPED_UNICODE);
     DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, 'home_modules', $modJson]);
+    settings_clear_cache($sid);
     redirect('admin.php?m=tpls&tab=diy', '首页布局与模块配置已保存');
 }
 
@@ -1617,6 +1621,7 @@ function apply_tpl_home_json(string $tplName, int $siteId): bool
     if (is_array($modules)) {
         DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$siteId, 'home_modules', json_encode($modules, JSON_UNESCAPED_UNICODE)]);
     }
+    settings_clear_cache($siteId);
     return true;
 }
 
@@ -1659,19 +1664,20 @@ if ($m === 'tpls') {
             ];
         }
     }
+    // 兼容旧库：DIY 链接选择器查询的表可能不存在，捕获异常避免整页 500
+    $veLinks = ['articles' => [], 'products' => [], 'forms' => [], 'downloads' => [], 'images' => []];
+    try { $veLinks['articles']  = DB::all('SELECT id,title FROM articles WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 300', [$sid]); } catch (Throwable $e) {}
+    try { $veLinks['products']  = DB::all('SELECT id,title FROM products WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 200', [$sid]); } catch (Throwable $e) {}
+    try { $veLinks['forms']     = DB::all('SELECT id,name FROM form_defs WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 100', [$sid]); } catch (Throwable $e) {}
+    try { $veLinks['downloads'] = DB::all('SELECT id,title,file_url FROM downloads WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 200', [$sid]); } catch (Throwable $e) {}
+    try { $veLinks['images']    = DB::all('SELECT path,name FROM uploads WHERE site_id=? ORDER BY id DESC LIMIT 60', [$sid]); } catch (Throwable $e) {}
     render('tpls.php', [
         'tpls' => $tpls,
         'active' => setting('tpl_active', ''),
         'err' => '',
         'tplNames' => $TPL_NAMES,
         'data' => settings_all(),
-        'veLinks' => [
-            'articles'  => DB::all('SELECT id,title FROM articles WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 300', [$sid]),
-            'products'  => DB::all('SELECT id,title FROM products WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 200', [$sid]),
-            'forms'     => DB::all('SELECT id,name FROM form_defs WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 100', [$sid]),
-            'downloads' => DB::all('SELECT id,title,file_url FROM downloads WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 200', [$sid]),
-            'images'    => DB::all('SELECT path,name FROM uploads WHERE site_id=? ORDER BY id DESC LIMIT 60', [$sid]),
-        ],
+        'veLinks' => $veLinks,
     ]);
     exit;
 }

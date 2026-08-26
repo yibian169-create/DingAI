@@ -64,18 +64,32 @@ function init_site(int $siteId, string $siteName): void
     }
 }
 
+/** 配置缓存容器（替代函数内 static，便于在写入后主动失效） */
+class SettingsCache {
+    public static array $cache = [];
+}
+
+/** 按站点清除配置缓存；不传则清除全部 */
+function settings_clear_cache(?int $siteId = null): void
+{
+    if ($siteId === null) {
+        SettingsCache::$cache = [];
+    } else {
+        unset(SettingsCache::$cache[$siteId]);
+    }
+}
+
 /** 读取单个配置（按当前站点） */
 function setting(string $key, string $def = '', ?int $siteId = null): string
 {
     $siteId = $siteId ?? current_site_id();
-    static $cache = [];
-    if (!isset($cache[$siteId])) {
-        $cache[$siteId] = [];
+    if (!isset(SettingsCache::$cache[$siteId])) {
+        SettingsCache::$cache[$siteId] = [];
         foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
-            $cache[$siteId][$r['key']] = $r['value'];
+            SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
         }
     }
-    $raw = $cache[$siteId][$key] ?? $def;
+    $raw = SettingsCache::$cache[$siteId][$key] ?? $def;
     // 敏感键（AI Key）读取时解密；非密文原样返回，兼容历史明文数据
     if (in_array($key, _secret_keys(), true)) {
         return dec_secret($raw);
@@ -87,14 +101,13 @@ function setting(string $key, string $def = '', ?int $siteId = null): string
 function settings_all(): array
 {
     $siteId = current_site_id();
-    static $cache = [];
-    if (!isset($cache[$siteId])) {
-        $cache[$siteId] = [];
+    if (!isset(SettingsCache::$cache[$siteId])) {
+        SettingsCache::$cache[$siteId] = [];
         foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
-            $cache[$siteId][$r['key']] = $r['value'];
+            SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
         }
     }
-    return $cache[$siteId];
+    return SettingsCache::$cache[$siteId];
 }
 
 /** 写入配置（按当前站点，存在则更新，不存在则插入）
@@ -223,6 +236,8 @@ function save_setting(string $key, string $value): void
         'INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=?',
         [$siteId, $key, $value, $value]
     );
+    // 写入后立即失效该站点配置缓存，避免 PHP-FPM 同一 worker 内下一请求读到旧值
+    settings_clear_cache($siteId);
 }
 
 /** 构建栏目树（含子栏目，按当前站点） */

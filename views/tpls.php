@@ -343,7 +343,11 @@
       $modules = $tplHomeConfig['home_modules'];
     }
 
-    $veInit = ['allowed' => $allowedSections, 'icons' => $diyIcons, 'desc' => $diyDesc, 'layout' => $layout, 'modules' => $modules, 'links' => $veLinks ?? null];
+    $veInit = [
+      'allowed' => $allowedSections, 'icons' => $diyIcons, 'desc' => $diyDesc,
+      'layout' => $layout, 'modules' => (object)$modules, 'links' => $veLinks ?? null,
+      'baseAllowed' => $baseAllowedSections, 'baseIcons' => $baseDiyIcons, 'baseDesc' => $baseDiyDesc,
+    ];
     ?>
     <div class="ve" id="ve">
       <aside class="ve-lib">
@@ -661,6 +665,16 @@ window.addEventListener('error', function(ev){
 });
 (function() {
   var INIT = window.VE_INIT || {allowed:{}, icons:{}, desc:{}, layout:[], modules:{}};
+  // 后端数据异常时的多重兜底，确保 DIY 编辑器至少能渲染出来
+  if (!INIT.allowed || Object.keys(INIT.allowed).length === 0) {
+    INIT.allowed = INIT.baseAllowed || {hero:'首屏 Hero',scenario:'电商孵化',stats:'数据统计',capabilities:'核心能力',about:'关于我们 / AI员工',products:'产品精选',workflow:'服务流程',news:'新闻动态',cta:'底部 CTA',contact:'联系我们',ticker:'滚动字幕',board:'布料拼贴 Hero',collections:'空间系列',story:'材质故事',timeline:'制造流程(竖排)',quote:'工艺引语'};
+    INIT.icons = INIT.baseIcons || {hero:'🚀',scenario:'🍄',stats:'📊',capabilities:'⚡',about:'🤖',products:'🛍️',workflow:'🔄',news:'📰',cta:'💡',contact:'📞',ticker:'📜',board:'🧵',collections:'🛋️',story:'🌿',timeline:'🪡',quote:'💬'};
+    INIT.desc = INIT.baseDesc || {};
+  }
+  if (!INIT.layout || !INIT.layout.length) {
+    INIT.layout = [{key:'hero',show:1},{key:'scenario',show:1},{key:'stats',show:1},{key:'capabilities',show:1},{key:'about',show:1},{key:'workflow',show:1},{key:'cta',show:1},{key:'contact',show:1}];
+  }
+  if (!INIT.modules || typeof INIT.modules !== 'object') { INIT.modules = {}; }
   var SCHEMA = {
     hero: { fields:[
       {k:'kicker',label:'顶部小标签',t:'text'},
