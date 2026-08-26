@@ -1737,11 +1737,18 @@ function ip_to_region(string $ip): array
         if ($resp !== false) {
             $j = json_decode($resp, true);
             if (is_array($j)) {
+                // 腾讯位置服务：result.ad_info.province/city
+                if (isset($j['result']['ad_info'])) {
+                    $prov = (string)($j['result']['ad_info']['province'] ?? '');
+                    $city = (string)($j['result']['ad_info']['city'] ?? '');
+                }
                 // 百度 IP 定位：content.address_detail.province/city
-                if (isset($j['content']['address_detail'])) {
+                elseif (isset($j['content']['address_detail'])) {
                     $prov = (string)($j['content']['address_detail']['province'] ?? '');
                     $city = (string)($j['content']['address_detail']['city'] ?? '');
-                } else {
+                }
+                // 通用：data.province / province
+                else {
                     $prov = (string)($j['data']['province'] ?? $j['province'] ?? '');
                     $city = (string)($j['data']['city'] ?? $j['city'] ?? '');
                 }
