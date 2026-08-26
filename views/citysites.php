@@ -172,12 +172,12 @@ $grouped = $grouped + $rest;
           <h2>② 分站顶部品牌横幅</h2>
           <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
             <strong>显示在每个城市分站页顶部</strong>，是强化品牌曝光的核心位置。
-            <br>📍 <strong>品牌名自动取自</strong>：<a href="admin.php?m=tpl_edit" style="color:var(--primary);text-decoration:underline"><strong>模板中心 → 基础设置 → 站点名称</strong></a>，无需在此处重复填写。
+            <br>📍 <strong>品牌名自动取自</strong>：<a href="admin.php?m=settings" style="color:var(--primary);text-decoration:underline"><strong>模板中心 → 基础设置 → 站点名称</strong></a>，无需在此处重复填写。
           </p>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 16px;background:linear-gradient(115deg,#fde68a,#fbbf24);border-radius:8px;margin-bottom:12px">
             <span style="font-size:13px;color:#451a03;font-weight:600">当前品牌名：</span>
             <strong style="font-size:16px;color:#451a03;background:rgba(255,255,255,.5);padding:4px 12px;border-radius:6px"><?= e(setting('site_name', '得应盯')) ?></strong>
-            <a class="btn btn-s" href="admin.php?m=tpl_edit" style="background:rgba(69,26,3,.18);color:#451a03;border:none">⚙ 修改 →</a>
+            <a class="btn btn-s" href="admin.php?m=settings" style="background:rgba(69,26,3,.18);color:#451a03;border:none">⚙ 修改 →</a>
           </div>
           <details style="margin-top:8px;font-size:12.5px;color:var(--muted)">
             <summary style="cursor:pointer;color:var(--primary);font-weight:600">▶ 还想加一行「运营通知」？（可选，公告没人看的话就别设）</summary>
