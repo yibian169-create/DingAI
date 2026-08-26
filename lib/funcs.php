@@ -260,10 +260,13 @@ function current_city(): ?array
     return $row ?: null;
 }
 
-/** 分站 URL（优先拼音后缀） */
+/** 分站 URL（优先拼音后缀；开启 city_pretty 后输出伪静态 /beijing/，需配 Nginx 重写） */
 function city_url(array $c): string
 {
     $key = !empty($c['pinyin']) ? $c['pinyin'] : $c['city'];
+    if (setting('city_pretty', '0') === '1') {
+        return '/' . urlencode($key) . '/';
+    }
     return 'index.php?city=' . urlencode($key);
 }
 
@@ -1674,7 +1677,7 @@ function detect_device(string $ua): string
     return 'desktop';
 }
 
-/** 根据 IP 推断省市（Demo：保留常见段，其余可接 IP 库） */
+/** 根据 IP 推断省市（三级：离线 ip2region 库 → 在线 API → Demo 映射） */
 function ip_to_region(string $ip): array
 {
     // 本地/内网/保留地址：明确标注，避免地域统计被错误数据污染
@@ -1682,7 +1685,60 @@ function ip_to_region(string $ip): array
         || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
         return ['province' => '本地', 'city' => '内网'];
     }
-    // 简单演示映射（可按真实 IP 库替换）
+    // ① 离线 ip2region（无需 key、稳定、精确到市）：static/ip2region.xdb 存在即启用
+    static $searcher = null;
+    if ($searcher === null) {
+        $db = __DIR__ . '/../static/ip2region.xdb';
+        if (is_file($db)) {
+            require_once __DIR__ . '/ip2region_searcher.php';
+            try {
+                $searcher = new Ip2regionSearcher($db);
+            } catch (Throwable $e) {
+                $searcher = false;
+            }
+        } else {
+            $searcher = false;
+        }
+    }
+    if ($searcher) {
+        try {
+            $region = $searcher->search($ip);
+            if ($region !== null && $region !== '') {
+                $parts = explode('|', $region);
+                $prov  = trim((string)($parts[1] ?? ''));
+                $city  = trim((string)($parts[2] ?? ''));
+                if ($prov !== '' && $prov !== '0') {
+                    if ($city === '' || $city === '0') {
+                        $city = $prov;
+                    }
+                    // 部分库 city 是 "北京市"，去掉 市/县 后缀便于匹配 city_sites
+                    $city = preg_replace('/[市区县]$/u', '', $city);
+                    return ['province' => $prov, 'city' => $city];
+                }
+            }
+        } catch (Throwable $e) {
+        }
+    }
+    // ② 在线 API（后台「API 配置 → IP 归属」开启后使用；默认百度免费接口，无需 key）
+    if (setting('ip_geo_service', 'none') === 'api') {
+        $apiUrl = setting('ip_geo_api_url', 'https://qifu-api.baidubce.com/ip/geo/v1/district?ip={ip}');
+        $apiKey = setting('ip_geo_api_key', '');
+        $url = str_replace(['{ip}', '{key}'], [rawurlencode($ip), rawurlencode($apiKey)], $apiUrl);
+        $ctx = stream_context_create(['http' => ['method' => 'GET', 'timeout' => 5, 'header' => "User-Agent: Mozilla/5.0\r\n"]]);
+        $resp = @file_get_contents($url, false, $ctx);
+        if ($resp !== false) {
+            $j = json_decode($resp, true);
+            if (is_array($j)) {
+                $prov = (string)($j['data']['province'] ?? $j['province'] ?? '');
+                $city = (string)($j['data']['city'] ?? $j['city'] ?? '');
+                if ($prov !== '') {
+                    $city = preg_replace('/[市区县]$/u', '', $city !== '' ? $city : $prov);
+                    return ['province' => $prov, 'city' => $city];
+                }
+            }
+        }
+    }
+    // ③ 简单演示映射（可按真实 IP 库替换）
     $map = [
         '110.' => ['province' => '北京', 'city' => '北京'],
         '111.' => ['province' => '北京', 'city' => '北京'],
@@ -1711,6 +1767,22 @@ function ip_to_region(string $ip): array
     }
     // 默认返回北京，避免空值
     return ['province' => '北京', 'city' => '北京'];
+}
+
+/** 用访客 IP 自动匹配城市分站（L5 自动推荐用）。命中 city_sites 返回城市记录，否则 null */
+function detect_city_by_ip(string $ip): ?array
+{
+    if (setting('city_enable', '0') !== '1') {
+        return null;
+    }
+    $region = ip_to_region($ip);
+    $cityName = $region['city'] ?? '';
+    if ($cityName === '' || $cityName === '内网' || $cityName === '本地') {
+        return null;
+    }
+    $sid = current_site_id();
+    $row = DB::one('SELECT * FROM city_sites WHERE site_id=? AND city=? AND status=1 LIMIT 1', [$sid, $cityName]);
+    return $row ?: null;
 }
 
 /** 记录一次访问（同 IP 5 分钟内只更新一次 UV，但 PV 每次刷新都会累加——此处简化为每 5 分钟记一条） */

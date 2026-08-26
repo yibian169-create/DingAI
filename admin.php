@@ -254,10 +254,11 @@ if ($m === 'api_settings') {
 }
 if ($m === 'api_save') {
     require_admin();
-    foreach (['ai_api_url', 'ai_api_key', 'ai_model', 'ai_img_url', 'ai_img_key', 'ai_img_model'] as $k) {
+    foreach (['ai_api_url', 'ai_api_key', 'ai_model', 'ai_img_url', 'ai_img_key', 'ai_img_model',
+              'ip_geo_service', 'ip_geo_api_url', 'ip_geo_api_key'] as $k) {
         $v = trim((string)($_POST[$k] ?? ''));
         // 密钥字段：表单不回显明文，若未填写则保留已存储的原值，避免被清空
-        if (($k === 'ai_api_key' || $k === 'ai_img_key') && $v === '') {
+        if (in_array($k, ['ai_api_key', 'ai_img_key', 'ip_geo_api_key'], true) && $v === '') {
             $v = setting($k);
         }
         save_setting($k, $v);

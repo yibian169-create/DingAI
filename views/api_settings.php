@@ -104,6 +104,28 @@
           </div>
         </div>
 
+        <div class="ai-divider"></div>
+        <h3 style="font-size:14px;margin:6px 0 10px">🌐 IP 归属（可选，全国分站自动识别访客城市用）</h3>
+        <div class="api-config__body" style="display:block">
+          <div class="field"><label>归属服务</label>
+            <select id="ip_geo_service" name="ip_geo_service">
+              <option value="none" <?= ($cfg['ip_geo_service'] ?? 'none') === 'none' ? 'selected' : '' ?>>关闭在线 API（内置 Demo 映射兜底）</option>
+              <option value="api" <?= ($cfg['ip_geo_service'] ?? '') === 'api' ? 'selected' : '' ?>>在线 API（下方地址 + 可选 Key）</option>
+            </select>
+          </div>
+          <div class="field"><label>在线 API 地址（{ip} 占位符）</label><input type="url" id="ip_geo_api_url" name="ip_geo_api_url" value="<?= e($cfg['ip_geo_api_url'] ?? 'https://qifu-api.baidubce.com/ip/geo/v1/district?ip={ip}') ?>" placeholder="https://qifu-api.baidubce.com/ip/geo/v1/district?ip={ip}"></div>
+          <div class="field">
+            <label>在线 API Key（可选）
+              <?php if (!empty($cfg['ip_geo_api_key'])): ?><span class="geo-badge ok">● 已配置</span><?php endif; ?>
+            </label>
+            <div class="pw-wrap">
+              <input type="password" id="ip_geo_api_key" name="ip_geo_api_key" value="" placeholder="无需 key 的接口留空" autocomplete="off">
+              <button type="button" class="pw-toggle" onclick="togglePw('ip_geo_api_key',this)">显示</button>
+            </div>
+          </div>
+          <div class="pw-mask">📌 优先推荐 <b>离线 ip2region 库</b>：把 ip2region.xdb（约 11MB，GitHub: lionsoul2014/ip2region 下载）放到 static/ip2region.xdb 即自动启用，无需 key、离线精确到市。在线 API 默认百度免费接口无需 key。</div>
+        </div>
+
         <div class="api-config__foot" style="text-align:right;margin-top:14px">
           <button class="btn btn-p" type="submit">💾 保存 API 配置</button>
         </div>
