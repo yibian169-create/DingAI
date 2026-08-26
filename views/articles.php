@@ -344,6 +344,7 @@ function gen(){
     badge.textContent='敏感词检测：'+r.hit+' 处已替换'; badge.className=r.hit>0?'badge warn':'badge ok';
     var seoTip=genSeo?' SEO':'', geoTip=genGeo?' GEO':'';
     if(r.img_count>0){ statusText.textContent='✅ 文章+'+r.img_count+'张插图已完成（'+seoTip+geoTip+' 已自动生成）'; }
+    else if(r.img_err){ statusText.textContent='✅ 文章已完成（'+seoTip+geoTip+' 已自动生成），⚠ 插图失败：'+r.img_err; }
     else { statusText.textContent='✅ 文章已完成（'+seoTip+geoTip+' 已自动生成；未配置生图 API，纯文字无插图）'; }
     // 勾选"生成后直接发布"且为新建文章时，自动提交保存并发布
     if(genPublish){

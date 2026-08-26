@@ -1308,9 +1308,10 @@ function ai_image_save_b64(string $b64, string $sourceName = ''): array
     return ['ok' => true, 'path' => UPLOAD_URL . $path, 'msg' => '保存成功'];
 }
 
-/** 调用 DALL·E / gpt-image-1 等 OpenAI 兼容生图接口，下载/解码后落库，返回本地可访问 URL 或 null */
-function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt): ?string
+/** 调用 DALL·E / gpt-image-1 等 OpenAI 兼容生图接口，下载/解码后落库，返回本地可访问 URL 或具体失败原因 */
+function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt): array
 {
+    $fail = static function (string $msg): array { return ['ok' => false, 'path' => null, 'msg' => $msg]; };
     $apiUrl = rtrim($apiUrl, '/');
     if (!preg_match('#/images/generations$#', $apiUrl)) {
         $apiUrl .= '/images/generations';
@@ -1320,29 +1321,37 @@ function ai_image(string $apiUrl, string $apiKey, string $model, string $prompt)
         'prompt' => $prompt,
         'n' => 1,
         'size' => '1024x1024',
-        'response_format' => 'url',
     ], JSON_UNESCAPED_UNICODE);
     $httpCode = 0;
     $resp = ai_http_post($apiUrl, $apiKey, $body, $httpCode);
     if ($resp === null || $resp === '') {
-        return null;
+        return $fail("生图接口请求失败（HTTP {$httpCode}，网络/证书/超时，请检查生图地址与服务器网络）");
+    }
+    if ($httpCode >= 400) {
+        $detail = '';
+        $j = json_decode($resp, true);
+        if (is_array($j) && !empty($j['error']['message'])) {
+            $detail = '：' . mb_substr((string)$j['error']['message'], 0, 120);
+        }
+        return $fail("生图接口返回 HTTP {$httpCode}{$detail}");
     }
     $json = json_decode($resp, true);
     if (!is_array($json) || empty($json['data'][0])) {
-        return null;
+        return $fail('生图接口返回格式异常（无 data[0]）——请确认该服务支持 /images/generations 生图接口（DeepSeek 不支持生图）');
     }
     $item = $json['data'][0];
+    $name = 'ai_' . mb_substr(preg_replace('/\s+/', '', $prompt), 0, 20);
     // DALL·E-3 等返回远程 URL：下载到本地图片空间，避免依赖第三方链接存活
     if (!empty($item['url'])) {
-        $saved = save_remote_image($item['url'], 'ai_' . mb_substr(preg_replace('/\s+/', '', $prompt), 0, 20));
-        return $saved['ok'] ? $saved['path'] : null;
+        $saved = save_remote_image($item['url'], $name);
+        return $saved['ok'] ? ['ok' => true, 'path' => $saved['path'], 'msg' => ''] : $fail('图片下载失败：' . $saved['msg']);
     }
     // gpt-image-1 等返回 base64：直接解码落库
     if (!empty($item['b64_json'])) {
-        $saved = ai_image_save_b64($item['b64_json'], 'ai_' . mb_substr(preg_replace('/\s+/', '', $prompt), 0, 20));
-        return $saved['ok'] ? $saved['path'] : null;
+        $saved = ai_image_save_b64($item['b64_json'], $name);
+        return $saved['ok'] ? ['ok' => true, 'path' => $saved['path'], 'msg' => ''] : $fail('图片保存失败：' . $saved['msg']);
     }
-    return null;
+    return $fail('生图接口返回的 data[0] 中既无 url 也无 b64_json，格式不兼容');
 }
 
 /**
@@ -1387,22 +1396,28 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
     $content = nl2br($c['out']);
     $cover = '';
     $imgCount = 0;
+    $imgErr = '';
     if ($withImg) {
         $imgUrl = setting('ai_img_url', '');
         $imgKey = setting('ai_img_key', '');
         $imgModel = setting('ai_img_model', 'dall-e-3');
-        if ($imgUrl !== '' && $imgKey !== '') {
+        if ($imgUrl === '' || $imgKey === '') {
+            $imgErr = '未配置生图 API（生图地址/Key 为空）——写作 API 不能生图，需在「API 配置」单独填写生图地址/Key/模型';
+        } else {
             $gist = mb_substr(preg_replace('/[\r\n]+/', '。', $c['out']), 0, 60);
             for ($i = 0; $i < 2; $i++) {
                 $r = ai_image($imgUrl, $imgKey, $imgModel, "为一篇关于「{$topic}」的中文文章配一张写实风格配图，主题：{$gist}，第" . ($i + 1) . '张');
-                if ($r !== null) {
+                if ($r['ok']) {
                     // ai_image 已下载/解码并落库，返回本地可访问 URL（兼容 DALL·E-3 的 url 与 gpt-image-1 的 b64_json）
-                    $tag = '<img src="' . $r . '" style="max-width:100%;border-radius:8px;margin:14px 0"><br>';
+                    $tag = '<img src="' . $r['path'] . '" style="max-width:100%;border-radius:8px;margin:14px 0"><br>';
                     $content = ai_insert_image($content, $tag, $i);
                     if ($i === 0) {
-                        $cover = $r; // 封面取第一张插图
+                        $cover = $r['path']; // 封面取第一张插图
                     }
                     $imgCount++;
+                } else {
+                    $imgErr = '第' . ($i + 1) . '张插图失败：' . $r['msg'];
+                    break; // 第一张失败通常后续也失败，不再重复调用
                 }
             }
         }
@@ -1427,7 +1442,7 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
 
     return [
         'ok' => true, 'title' => $title, 'content' => $content, 'cover' => $cover,
-        'hit' => $c['hit'], 'img_count' => $imgCount,
+        'hit' => $c['hit'], 'img_count' => $imgCount, 'img_err' => $imgErr,
         'seo_title' => $seo['ok'] ? ($seo['seo_title'] ?? '') : '',
         'seo_keywords' => $seo['ok'] ? ($seo['seo_keywords'] ?? '') : '',
         'seo_description' => $seo['ok'] ? ($seo['seo_description'] ?? '') : '',
@@ -1507,6 +1522,9 @@ function maybe_auto_post(): void
          $r['seo_title'] ?? '', $r['seo_keywords'] ?? '', $r['seo_description'] ?? '',
          $r['geo_summary'] ?? '', $r['geo_faq'] ?? '']);
     DB::run('INSERT INTO ai_post_log(site_id,keyword,model,has_image) VALUES(?,?,?,?)', [$sid, $kw, setting('ai_model', 'deepseek-chat'), $r['img_count'] > 0 ? 1 : 0]);
+    if (!empty($r['img_err'])) {
+        error_log('[deyingding] AI 自动发文插图失败: ' . $r['img_err']);
+    }
 }
 
 /* =========================================================
