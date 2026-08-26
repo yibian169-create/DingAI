@@ -334,7 +334,7 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if ($cityName === '') {
         return ['ok' => false, 'msg' => '城市名不能为空'];
     }
-    $prompt = "你是 SEO 专家。为城市「{$cityName}」（行业「{$industry}」）的独立分站生成 3 个 SEO 字段。\n\n要求：\n1. title_suffix：标题后缀，6~16 字，含「{$cityName}」与「{$industry}」，**用不同措辞**（如「- {$cityName}{$industry}」「{$cityName}{$industry}服务商」「{$cityName}专业{$industry}」「{$cityName}{$industry}一站式服务」等），**避免与别的城市用同一模板**。\n2. keywords：5~6 个搜索关键词，英文逗号分隔，必须包含「{$cityName}」+「{$industry}」，可加同义表达/相关业务/本地化场景词。\n3. description：60~100 字独立描述，含「{$cityName}」+「{$industry}」，强调本地化/一对一/上门服务等差异化承诺，**不要模板套话**。\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
+    $prompt = "你是 SEO 专家。为城市「{$cityName}」（行业「{$industry}」）的独立分站生成 3 个 SEO 字段。\n\n【严格格式要求，硬性限制，违反即作废】\n\n1. title_suffix（**6~12 字，硬性！超过 12 字视为无效**）\n   ✅ 正确格式：`- {城市}{服务}`，其中「服务」是 2~6 字的简洁短语（一个名词/短语，禁止堆叠）\n   ✅ 正确示例：\n     `- 北京AI孵化`\n     `- 北京企业AI服务`\n     `- 北京AI落地服务`\n     `- 北京AI定制中心`\n     `- 北京AI解决方案`\n   ❌ 错误示例（堆砌/超长/混描述）：\n     `- 北京电商+AI孵化-工厂企业AI员工定制专家落地行`（堆砌多个词）\n     `北京专业AI孵化本地化服务一对一咨询`（超过 12 字）\n     `- 北京AI孵化-工厂企业AI员工定制服务`（混入了 description 内容）\n   规则：只能一段 `- {城市}{服务}`，服务部分用一个简洁短语，**禁止堆叠关键词**\n\n2. keywords（5~6 个，英文逗号分隔，必须含「{$cityName}」与「{$industry}」）\n   ✅ 示例：`北京AI孵化,北京企业AI服务,北京AI落地,北京AI员工定制,北京AI解决方案,北京AI开发`\n\n3. description（60~100 字，一段独立描述）\n   含「{$cityName}」+「{$industry}」，强调本地化/一对一/上门服务，**不能与 title_suffix 重复内容**\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
     $raw = ai_chat($apiUrl, $apiKey, $model, $prompt, 600);
     if ($raw === null || $raw === '') {
         return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）'];
@@ -357,10 +357,50 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     }
     // 兜底：确保标题/关键词含城市名
     if (mb_strpos($ts, $cityName) === false) {
-        $ts = $cityName . $industry;
+        $ts = '-' . $cityName . $industry;
     }
     if (mb_strpos($kw, $cityName) === false) {
         $kw = $cityName . $industry . ',' . $kw;
+    }
+    // 后端规则兜底：title_suffix 必须简洁（≤14 字、含 - 开头+城市名+服务短语，禁止堆砌）
+    $ts = trim($ts);
+    // 1) 移除多余的 + - 等堆砌符号
+    $ts = preg_replace('/\s*[+\+—\-=]\s*/', '', $ts) ?? $ts;
+    // 2) 取首段（避免 AI 把多个城市内容塞进一个字段，以 - 开头的第一段为准）
+    if (mb_strpos($ts, '- ') !== 0 && mb_strpos($ts, '-') === 0) {
+        $ts = '- ' . ltrim(mb_substr($ts, 1));
+    }
+    // 3) 截断到 14 字（防止 AI 输出过长）
+    if (mb_strlen($ts) > 14) {
+        // 尝试截到第 14 字附近的"- "或服务名词边界
+        $cut = mb_substr($ts, 0, 14);
+        $ts = rtrim($cut, '、, ,-+');
+        if (mb_strpos($ts, $cityName) === false) {
+            $ts = '-' . $cityName . $industry;
+        }
+    }
+    // 4) 必须 - 开头
+    if (mb_strpos($ts, '-') !== 0) {
+        $ts = '-' . $ts;
+    }
+    // 5) 必须含城市名；缺失则强制注入
+    if (mb_strpos($ts, $cityName) === false) {
+        $ts = '-' . $cityName . $industry;
+    }
+    // keywords 限制最多 6 个（按逗号/中文逗号切分）
+    $kwParts = preg_split('/[,,]/u', $kw) ?: [];
+    $kwParts = array_map('trim', $kwParts);
+    $kwParts = array_values(array_filter($kwParts, function ($x) { return $x !== ''; }));
+    if (count($kwParts) > 6) {
+        $kwParts = array_slice($kwParts, 0, 6);
+    }
+    $kw = implode(',', $kwParts);
+    if (mb_strpos($kw, $cityName) === false) {
+        $kw = $cityName . $industry . ',' . $kw;
+    }
+    // description 截断到 120 字（防堆砌）
+    if (mb_strlen($desc) > 120) {
+        $desc = mb_substr($desc, 0, 118) . '…';
     }
     return ['ok' => true, 'title_suffix' => $ts, 'keywords' => $kw, 'description' => $desc, 'msg' => ''];
 }
