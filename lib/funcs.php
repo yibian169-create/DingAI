@@ -324,12 +324,19 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if ($industry === '') {
         $industry = '网站建设';
     }
+    // 行业词截断 12 字（防止用户填超长字符串撑爆 prompt/AI 配额）
+    if (mb_strlen($industry) > 12) {
+        $industry = mb_substr($industry, 0, 12);
+    }
     $apiUrl  = (string)setting('ai_api_url', '');
     $apiKey  = (string)setting('ai_api_key', '');
     $model   = (string)setting('ai_model', 'deepseek-chat');
     if ($apiUrl === '' || $apiKey === '') {
         return ['ok' => false, 'msg' => '请先在「API 配置」填写写作 API 地址与密钥'];
     }
+    $apiUrl = trim($apiUrl);
+    $apiKey = trim($apiKey);
+    $model = trim($model);
     $cityName = trim($cityName);
     if ($cityName === '') {
         return ['ok' => false, 'msg' => '城市名不能为空'];
@@ -356,7 +363,11 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     $httpCode = 0;
     $raw = ai_http_post($apiUrl, $apiKey, $body, $httpCode);
     if ($raw === null || $raw === '') {
-        return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）'];
+        return ['ok' => false, 'msg' => 'AI 调用失败（请检查 API 配置/网络/余额）', 'log' => 'httpCode=' . $httpCode . '; raw.len=' . strlen((string)$raw)];
+    }
+    // 记录首次原始返回到 PHP 错误日志（排查 AI 返回格式异常用，宝塔 → 软件商店 → PHP → 错误日志可看）
+    if (function_exists('error_log')) {
+        @error_log('[ai_city_tdk] city=' . $cityName . ' industry=' . $industry . ' httpCode=' . $httpCode . ' raw.len=' . strlen((string)$raw) . ' raw.head=' . str_replace(["\r", "\n"], ' ', mb_substr((string)$raw, 0, 200)));
     }
     // 容错解析：从 AI 返回中抽出 JSON 块
     $jsonStr = $raw;

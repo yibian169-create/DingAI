@@ -1178,10 +1178,11 @@ if ($m === 'city_clear_tdk') {
 }
 if ($m === 'city_clear_all') {
     require_admin();
-    // 彻底删除所有分站（兜底，谨慎）
+    // 彻底删除所有分站（兜底，谨慎）+ 重置 AUTO_INCREMENT（避免 ID 叠加）
     $n = (int)DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'];
     DB::run('DELETE FROM city_sites WHERE site_id=?', [$sid]);
-    redirect('admin.php?m=citysites', "已彻底删除 {$n} 个分站，请重新「一键导入全国分站」");
+    try { DB::run('ALTER TABLE city_sites AUTO_INCREMENT = 1'); } catch (Throwable $e) { /* ignore */ }
+    redirect('admin.php?m=citysites', "已彻底删除 {$n} 个分站（ID 已重置），请重新「一键导入全国分站」");
 }
 if ($m === 'city_notice') {
     require_admin();

@@ -220,7 +220,12 @@ function cityTdkAiRun(){
   btn.disabled = true;
   st.style.display = 'block';
   var i = 0, okN = 0, skipN = 0, failN = 0;
-  function finish(m) { st.textContent = m; btn.disabled = false; }
+  var failList = []; // 累积失败原因（最多保留 15 条展示，避免过长）
+  function finish(m) {
+    var extra = failList.length ? '\n\n失败明细：\n' + failList.join('\n') : '';
+    st.textContent = m + extra;
+    btn.disabled = false;
+  }
   (function next(){
     if (i >= list.length) {
       finish('🎉 本批完成：AI 新增 ' + okN + '，跳过 ' + skipN + '（已有 SEO），失败 ' + failN + '。可再次点击继续生成剩余城市。');
@@ -237,10 +242,20 @@ function cityTdkAiRun(){
       .then(function (r) {
         if (r.ok) { okN++; st.textContent = '✅ [' + i + '/' + list.length + '] ' + c.city + '：' + (r.title_suffix || r.msg || '完成'); }
         else if (r.dup) { skipN++; st.textContent = '⏭ [' + i + '/' + list.length + '] ' + c.city + ' 已有 SEO，跳过'; }
-        else { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 失败：' + (r.msg || '未知原因'); }
+        else {
+          failN++;
+          var reason = r.msg || '未知原因';
+          st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 失败：' + reason;
+          if (failList.length < 15) { failList.push(c.city + '：' + reason); }
+        }
         next();
       })
-      .catch(function (e) { failN++; st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 请求失败：' + e.message; next(); });
+      .catch(function (e) {
+        failN++;
+        st.textContent = '⚠ [' + i + '/' + list.length + '] ' + c.city + ' 请求失败：' + e.message;
+        if (failList.length < 15) { failList.push(c.city + '：请求失败 ' + e.message); }
+        next();
+      });
   })();
 }
 </script>
