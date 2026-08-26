@@ -605,6 +605,8 @@ if ($m === 'ai_plan') {
 
 if ($m === 'ai_generate') {
     require_admin();
+    // 缓冲所有意外输出（PHP warning/notice/deprecated），保证响应体是纯 JSON，否则前端 r.json() 报 "Unexpected token <"
+    if (function_exists('ob_start')) { @ob_start(); }
     header('Content-Type: application/json; charset=utf-8');
     $topic = trim((string)($_POST['topic'] ?? ''));
     $words = (int)($_POST['words'] ?? 1200);
@@ -615,10 +617,12 @@ if ($m === 'ai_generate') {
     $doGeo = !empty($_POST['geo']);
     if ($topic === '') {
         echo json_encode(['ok' => false, 'msg' => '请输入主题/关键词']);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
     $r = ai_build_article($topic, $words, $tone, $extra, $withImg, $doSeo, $doGeo);
     echo json_encode($r, JSON_UNESCAPED_UNICODE);
+    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
     exit;
 }
 

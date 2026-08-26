@@ -1361,7 +1361,9 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
 {
     // 写文 + 2 次生图（单次最多 120s）+ SEO/GEO 一起可能 > 30s 默认 max_execution_time，
     // 进程被 kill 会导致浏览器 fetch 报 "Failed to fetch"。本函数内放开限制。
-    @set_time_limit(0);
+    // 兼容 disable_functions：先 ini_set（一般不被禁），fallback set_time_limit，并加 function_exists 守卫
+    if (function_exists('ini_set')) { @ini_set('max_execution_time', '0'); }
+    if (function_exists('set_time_limit')) { @set_time_limit(0); }
     $apiUrl = setting('ai_api_url', '');
     $apiKey = setting('ai_api_key', '');
     $model  = setting('ai_model', 'deepseek-chat');
