@@ -382,8 +382,16 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     $ts   = trim((string)($data['title_suffix'] ?? ''));
     $kw   = trim((string)($data['keywords'] ?? ''));
     $desc = trim((string)($data['description'] ?? ''));
-    if ($ts === '' || $kw === '' || $desc === '') {
-        return ['ok' => false, 'msg' => 'AI 返回字段不全（需含 title_suffix/keywords/description）'];
+    // 宽容补全：AI 返回残缺时按规则兜底，避免全军覆没
+    $siteName = setting('site_name', '得应盯网络科技');
+    if ($ts === '') {
+        $ts = '-' . $cityName . $industry . '服务';
+    }
+    if ($kw === '') {
+        $kw = $cityName . $industry . ',' . $cityName . '服务商,' . $cityName . '本地化服务,' . $cityName . '一站式方案';
+    }
+    if ($desc === '') {
+        $desc = $siteName . '专注' . $cityName . $industry . '，本地化一对一服务，从需求到上线全程跟进，欢迎来电咨询。';
     }
     // 兜底：确保标题/关键词含城市名
     if (mb_strpos($ts, $cityName) === false) {
