@@ -4,6 +4,12 @@
  * 路由: index.php?act=home|list|detail|city   （可选 ?city=城市名 触发分站）
  */
 
+/* 生产环境安全：不向访客输出 PHP 错误（路径/堆栈泄露）；错误仍记录到服务器日志 */
+if (function_exists('ini_set')) {
+    @ini_set('display_errors', '0');
+}
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+
 /* 未安装 → 跳转安装向导 */
 if (!file_exists(__DIR__ . '/install.lock')) {
     header('Location: install/index.php');

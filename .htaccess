@@ -1,0 +1,38 @@
+# ============================================================
+# deyingding-php 根目录防护（Apache 2.4+ / 宝塔默认 Apache）
+# 说明：
+#  - 屏蔽直接访问敏感文件（数据库 SQL、配置、备份、日志、编辑器临时文件）
+#  - 上传目录 uploads/ 内另有 .htaccess 禁止脚本执行（双层防护）
+#  - Nginx 环境请在站点配置的 location 块内做等价的 deny（见下注释）
+# ============================================================
+
+# 1) 敏感文件一律禁止直接访问（返回 403）
+<FilesMatch "^(database\.sql|config\.php|install\.lock|\.env|\.app_secret|\.user\.ini|\.gitignore)$">
+    Require all denied
+</FilesMatch>
+
+# 2) 备份/日志/临时文件 禁止访问
+<FilesMatch "\.(sql|sql\.gz|bak|old|swp|swo|tmp|log|inc\.php)$">
+    Require all denied
+</FilesMatch>
+
+# 3) 隐藏文件（.开头）禁止访问
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 4) 上传目录禁止执行脚本（与 uploads/.htaccess 双保险）
+<DirectoryMatch "^.*/uploads/">
+    <FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht|html?|js|css|svg)$">
+        Require all denied
+    </FilesMatch>
+</DirectoryMatch>
+
+# ------------------------------------------------------------
+# Nginx 等价配置（宝塔站点配置 → 伪静态/配置修改里加）：
+#
+# location ~* ^/(database\.sql|config\.php|install\.lock|\.env) { deny all; }
+# location ~* \.(sql|bak|old|swp|log)$ { deny all; }
+# location ~* /\. { deny all; }
+# location ~* ^/uploads/.*\.(php|phtml|php7|js|svg)$ { deny all; }
+# ------------------------------------------------------------

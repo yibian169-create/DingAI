@@ -47,6 +47,7 @@ $csrf_protected = [
     'form_save', 'form_del', 'form_data_del',
     'settings_save', 'home_layout_save', 'visual_home_save',
     'tpl_upload', 'tpl_activate', 'tpl_del',
+    'clear_cache',
 ];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($m, $csrf_protected, true, ) && !csrf_check()) {
     if (($_POST['ajax'] ?? '') === '1'
@@ -137,7 +138,27 @@ if ($m === 'logout') {
     session_destroy();
     redirect('admin.php?m=login');
 }
-/* 清空服务器缓存（OPCache + 临时文件） */
+require_login();
+
+/* ---------- 仪表盘 ---------- */
+if ($m === 'dashboard') {
+    $data = [
+        'cat_n'   => DB::one('SELECT COUNT(*) AS n FROM categories WHERE site_id=?', [$sid])['n'],
+        'art_n'   => DB::one('SELECT COUNT(*) AS n FROM articles WHERE site_id=?', [$sid])['n'],
+        'pro_n'   => DB::one('SELECT COUNT(*) AS n FROM products WHERE site_id=?', [$sid])['n'],
+        'upload_n'=> DB::one('SELECT COUNT(*) AS n FROM uploads WHERE site_id=?', [$sid])['n'],
+        'city_n'  => DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'],
+    ];
+    $stats = dashboard_stats();
+    $hasReal = (int)DB::one('SELECT COUNT(*) AS n FROM visits WHERE site_id=?', [$sid])['n'] > 0;
+    // 新安装站点（无真实访问）：直接反馈 0，不使用演示假数据
+    render('dashboard.php', array_merge($data, ['stats' => $stats, 'has_real' => $hasReal]));
+    exit;
+}
+
+/* ---------- 平台用户管理已移除（单站点自用，不开放注册） ---------- */
+
+/* ---------- 清空服务器缓存（OPCache + 临时文件）—— 必须在 require_login 之后，需登录 + CSRF ---------- */
 if ($m === 'clear_cache') {
     $msg = [];
     if (function_exists('opcache_reset')) {
@@ -159,26 +180,6 @@ if ($m === 'clear_cache') {
     }
     redirect('admin.php', '缓存已清空：' . implode('；', $msg));
 }
-
-require_login();
-
-/* ---------- 仪表盘 ---------- */
-if ($m === 'dashboard') {
-    $data = [
-        'cat_n'   => DB::one('SELECT COUNT(*) AS n FROM categories WHERE site_id=?', [$sid])['n'],
-        'art_n'   => DB::one('SELECT COUNT(*) AS n FROM articles WHERE site_id=?', [$sid])['n'],
-        'pro_n'   => DB::one('SELECT COUNT(*) AS n FROM products WHERE site_id=?', [$sid])['n'],
-        'upload_n'=> DB::one('SELECT COUNT(*) AS n FROM uploads WHERE site_id=?', [$sid])['n'],
-        'city_n'  => DB::one('SELECT COUNT(*) AS n FROM city_sites WHERE site_id=?', [$sid])['n'],
-    ];
-    $stats = dashboard_stats();
-    $hasReal = (int)DB::one('SELECT COUNT(*) AS n FROM visits WHERE site_id=?', [$sid])['n'] > 0;
-    // 新安装站点（无真实访问）：直接反馈 0，不使用演示假数据
-    render('dashboard.php', array_merge($data, ['stats' => $stats, 'has_real' => $hasReal]));
-    exit;
-}
-
-/* ---------- 平台用户管理已移除（单站点自用，不开放注册） ---------- */
 
 /* ---------- 栏目管理（按站点） ---------- */
 if ($m === 'categories') {
