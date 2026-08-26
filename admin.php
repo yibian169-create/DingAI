@@ -1070,35 +1070,50 @@ if ($m === 'city_tdk_all') {
 }
 if ($m === 'ai_city_tdk_one') {
     require_admin();
+    // 强力接管：清掉所有嵌套 buffer + 抑制 PHP Warning/Notice（防止 deprecation/undefined 污染 JSON 响应）
+    while (ob_get_level() > 0) { @ob_end_clean(); }
+    @ini_set('display_errors', '0');
+    if (function_exists('set_error_handler')) {
+        set_error_handler(function ($errno, $errstr) { return true; }, E_ALL & ~E_ERROR & ~E_PARSE & ~E_USER_ERROR);
+    }
     if (function_exists('ob_start')) { @ob_start(); }
     header('Content-Type: application/json; charset=utf-8');
-    $cityId   = (int)($_POST['city_id'] ?? 0);
-    $industry = trim((string)($_POST['industry'] ?? '网站建设'));
-    $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=?', [$cityId, $sid]);
-    if (!$city) {
-        echo json_encode(['ok' => false, 'msg' => '城市不存在']);
+    header('X-Accel-Buffering: no');
+    try {
+        $cityId   = (int)($_POST['city_id'] ?? 0);
+        $industry = trim((string)($_POST['industry'] ?? '网站建设'));
+        $city = DB::one('SELECT * FROM city_sites WHERE id=? AND site_id=?', [$cityId, $sid]);
+        if (!$city) {
+            echo json_encode(['ok' => false, 'msg' => '城市不存在']);
+            if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+            exit;
+        }
+        // 已填过 SEO 的城市跳过（避免重复扣 AI 额度；想强制覆盖可手动编辑该分站 title_suffix 后再删掉重跑）
+        if (trim((string)$city['title_suffix']) !== '' && trim((string)$city['keywords']) !== '' && trim((string)$city['description']) !== '') {
+            echo json_encode(['ok' => false, 'dup' => true, 'msg' => $city['city'] . ' 已有 SEO，跳过（清空标题后缀后重跑可强制覆盖）']);
+            if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+            exit;
+        }
+        $r = ai_city_tdk($city['city'], $industry);
+        if (!$r['ok']) {
+            // 失败也置 tdk_try_at（避免无限重复尝试浪费 AI 额度）
+            DB::run('UPDATE city_sites SET tdk_try_at=NOW() WHERE id=? AND site_id=?', [$city['id'], $sid]);
+            echo json_encode(['ok' => false, 'msg' => 'AI 返回失败：' . $r['msg']]);
+            if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+            exit;
+        }
+        // 落库（每城独立 TDK，覆盖模板版；同时记 tdk_try_at）
+        DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=?,tdk_try_at=NOW() WHERE id=? AND site_id=?', [$r['title_suffix'], $r['keywords'], $r['description'], $city['id'], $sid]);
+        echo json_encode(['ok' => true, 'msg' => '已更新《' . $city['city'] . '》的 SEO', 'title_suffix' => $r['title_suffix']]);
+        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
+        exit;
+    } catch (Throwable $e) {
+        @error_log('[ai_city_tdk_one] exception: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        if (!headers_sent()) { header('Content-Type: application/json; charset=utf-8'); }
+        echo json_encode(['ok' => false, 'msg' => '服务异常：' . $e->getMessage()]);
         if (function_exists('ob_end_flush')) { @ob_end_flush(); }
         exit;
     }
-    // 已填过 SEO 的城市跳过（避免重复扣 AI 额度；想强制覆盖可手动编辑该分站 title_suffix 后再删掉重跑）
-    if (trim((string)$city['title_suffix']) !== '' && trim((string)$city['keywords']) !== '' && trim((string)$city['description']) !== '') {
-        echo json_encode(['ok' => false, 'dup' => true, 'msg' => $city['city'] . ' 已有 SEO，跳过（清空标题后缀后重跑可强制覆盖）']);
-        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
-        exit;
-    }
-    $r = ai_city_tdk($city['city'], $industry);
-    if (!$r['ok']) {
-        // 失败也置 tdk_try_at（避免无限重复尝试浪费 AI 配额）
-        DB::run('UPDATE city_sites SET tdk_try_at=NOW() WHERE id=? AND site_id=?', [$city['id'], $sid]);
-        echo json_encode(['ok' => false, 'msg' => 'AI 返回失败：' . $r['msg']]);
-        if (function_exists('ob_end_flush')) { @ob_end_flush(); }
-        exit;
-    }
-    // 落库（每城独立 TDK，覆盖模板版；同时记 tdk_try_at）
-    DB::run('UPDATE city_sites SET title_suffix=?,keywords=?,description=?,tdk_try_at=NOW() WHERE id=? AND site_id=?', [$r['title_suffix'], $r['keywords'], $r['description'], $city['id'], $sid]);
-    echo json_encode(['ok' => true, 'msg' => '已更新《' . $city['city'] . '》的 SEO', 'title_suffix' => $r['title_suffix']]);
-    if (function_exists('ob_end_flush')) { @ob_end_flush(); }
-    exit;
 }
 if ($m === 'city_plan_run') {
     require_admin();
