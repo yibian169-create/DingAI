@@ -350,6 +350,10 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if (mb_strlen($industry) > 12) {
         $industry = mb_substr($industry, 0, 12);
     }
+    $brand = trim((string)setting('site_name', ''));
+    if ($brand === '') { $brand = '得应盯'; }
+    if (mb_strlen($brand) > 8) { $brand = mb_substr($brand, 0, 8); }
+    $brandShort = preg_replace('/\s+/', '', $brand) ?: '得应盯';
     $apiUrl  = (string)setting('ai_api_url', '');
     $apiKey  = (string)setting('ai_api_key', '');
     $model   = (string)setting('ai_model', 'deepseek-chat');
@@ -364,13 +368,55 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
         return ['ok' => false, 'msg' => '城市名不能为空'];
     }
     // 词组选词库（每类多选一，让 AI 每城自由组合，避免所有城市用同一模板）
-    $tplWords = [
-        'obj' => ['企业', '工厂', '商家', '老板', '团队', '本地', '公司'],
-        'biz' => [$industry, 'AI孵化', 'AI定制', 'AI方案', 'AI落地', 'AI培训', 'AI服务', 'AI开发', 'AI应用'],
-        'form' => ['服务', '中心', '平台', '方案', '渠道', '团队', '工厂'],
-        'mod' => ['落地', '本地', '上门', '一对一', '专业', '本地化', '部署'],
+    $diffWords = [
+        '承诺'  => ['7天上手', '3天见效', '30天可查', '一对一上门', '当天响应', '专属顾问', '驻场服务', '本地团队'],
+        '权威'  => ['官方团队', '源头厂家', '资深顾问', 'AI专家团', '技术总监直带', '本地服务商'],
+        '服务'  => ['服务中心', '实战派', '落地专家', '落地服务', '本地化部署', '上门落地', '从需求到上线', '按效果付费'],
     ];
-    $prompt = "你是 SEO 专家。为城市「{$cityName}」生成 3 个 SEO 字段，行业主题是「{$industry}」。\n\n【title_suffix 规范 · 8~18 字，中段可自由用 - · _ 等装饰分隔符】\n\n总规则：\n· 必须以 `- ` 开头（SEO 惯例，搜索引擎/百度青眯）\n· 必须含「{$cityName}」与「{$industry}」\n· 中段允许用 1~2 个分隔符（`-` `·` `_` 任选），让标题更易读：\n    ✅ `- {$cityName} · {$industry}服务中心`\n    ✅ `- {$cityName}_{$industry}_官方`\n    ✅ `- {$cityName} - {$industry}专家`\n    ✅ `- {$cityName}-{$industry}-首选`\n· 禁止使用连续 ≥2 个相同分隔符（如 `AI---服务`、`北京===AI`）\n· 字数控制：8~18 字（不算首 `- `）\n\n✅ 正确示例（每城组合不同）：\n  北京 → `- 北京 · AI孵化专家`（城市+·+主体+修饰）\n  上海 → `- 上海_AI定制_中心`（城市+_+主体+_+修饰）\n  广州 → `- 广州·AI落地服务`（城市+·+主体+服务）\n  深圳 → `- 深圳 AI员工平台`（城市+空格+主体+修饰）\n  杭州 → `- 杭州-AI培训官方`（城市+-主体+修饰）\n  成都 → `- 成都 AI开发服务`（城市+空格+主体+服务）\n  武汉 → `- 武汉 AI 方案中心`（带空格分隔）\n  西安 → `- 西安·AI应用平台`（带 · 分隔）\n\n❌ 错误示例：\n  - 北京AI定制中心、上海AI定制中心、广州AI定制中心（每城都「AI定制中心」，单调）\n  - 北京AI（单薄，只有 1 个词组）\n  - 北京AI孵化专业本地化落地服务超过18字（超长）\n  - 北京AI孵化----工厂企业AI员工定制专家落地行（堆砌 4+ 个 -）\n  - 北京AI孵化中心123456（数字尾缀，无意义）\n\n**【反糊弄 · 硬要求】**：每城组合必须不同，绝不出现「XX + 同一词组 × N」模式。\n**【中段分隔符自由】**：你可以在中段插入 `-` `·` `_` ` `（空格）中的 1~2 个，让标题更易读、更专业；不需要强制 4 个词组拼接。\n\n【keywords 规范】5~6 个，英文逗号分隔，必须含「{$cityName}」与「{$industry}」\n示例：`北京AI孵化,北京企业AI服务,北京AI落地,北京AI员工定制,北京AI解决方案,北京AI开发`\n\n【description 规范】60~100 字，一段独立描述，强调本地化/一对一/上门，**不能与 title_suffix 重复**\n\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
+    $prompt = "你是 SEO 专家。请为城市「{$cityName}」生成分站 SEO 标题，行业主题是「{$industry}」，品牌名固定为「{$brand}」。\n"
+        . "\n【📚 网站标题 SEO 黄金格式（百度 + Google 双端友好）】\n"
+        . "**结构公式**：`[地域词]·[核心服务]·[差异化词]·[品牌词]`（4 段结构，差异化词是灵魂）\n"
+        . "\n每段职责：\n"
+        . "1️⃣ 地域词：必须是「{$cityName}」—— 放最前（搜索引擎给地域前置的页面更高权重）\n"
+        . "2️⃣ 核心服务：必须含「{$industry}」—— 1 个就够，不要堆砌\n"
+        . "3️⃣ 差异化词：每城必须不同！从下面 3 类词库里各挑 1 个，3 类都挑出 1 个：\n"
+        . "   · 承诺类：" . implode(' / ', $diffWords['承诺']) . "\n"
+        . "   · 权威类：" . implode(' / ', $diffWords['权威']) . "\n"
+        . "   · 服务类：" . implode(' / ', $diffWords['服务']) . "\n"
+        . "4️⃣ 品牌词：必须是「{$brand}」—— 放最后（强化品牌识别、避免站内竞争）\n"
+        . "\n【字数 + 分隔符严格规范】\n"
+        . "· 总字数：**8 ~ 22 字**（不算前后空格；百度 PC/移动端都完整显示的安全区）\n"
+        . "· 分隔符：每段之间用 **1 个**「 - 」或「 _ 」或「 · 」分隔\n"
+        . "· 禁止 emoji（★ ◆ 📌 等都会降权）\n"
+        . "· 禁止数字编号开头（搜索引擎判断 clickbait）\n"
+        . "\n【每城差异化硬要求 · 4 城不能雷同】\n"
+        . "· 同一行业词下，北京、上海、广州、深圳 的 title_suffix 必须差异化词不同\n"
+        . "· 4 城 title_suffix 不能完全一样（包括后缀），否则 = 站群惩罚\n"
+        . "· 承诺类、权威类、服务类 3 个类别各挑 1 词，确保 4 城挑出来的组合不同\n"
+        . "\n✅ 4 城正确示例（4 个差异化词组合 + 4 个品牌后缀）：\n"
+        . "  北京 → `北京 · AI孵化 · 一对一上门 · {$brand}`\n"
+        . "  上海 → `上海 · AI孵化 · 7天上手 · {$brand}`\n"
+        . "  广州 → `广州 · AI孵化 · 资深顾问 · {$brand}`\n"
+        . "  深圳 → `深圳 · AI孵化 · 官方团队 · {$brand}`\n"
+        . "\n✅ 4 城另一组（换行业词 + 仍然 4 段）：\n"
+        . "  北京 → `北京 · 网站建设 · 当天响应 · {$brand}`\n"
+        . "  上海 → `上海 · 网站建设 · 实战派 · {$brand}`\n"
+        . "  广州 → `广州 · 网站建设 · 落地专家 · {$brand}`\n"
+        . "  深圳 → `深圳 · 网站建设 · 上门落地 · {$brand}`\n"
+        . "\n❌ 错误示例（站群典型 = 必被惩罚）：\n"
+        . "  - 北京AI服务\n"
+        . "  - 上海AI服务\n"
+        . "  - 广州AI服务\n"
+        . "  - 深圳AI服务 ← 4 城完全一样，仅城市名不同 = 模板化站群\n"
+        . "\n❌ 错误示例（无品牌词）：\n"
+        . "  - 北京AI服务一对一上门 ← 没有品牌词，搜索引擎判定「没人认领」的低质内容\n"
+        . "\n❌ 错误示例（数字编号 + emoji）：\n"
+        . "  - 【2026最新】北京AI服务🎉 ← spam 信号直接降权\n"
+        . "\n【keywords 规范】5~6 个，英文逗号分隔，必须含「{$cityName}」与「{$industry}」；品牌词不混入\n"
+        . "示例：`北京AI孵化,北京企业AI服务,北京AI落地,北京AI员工定制,北京AI解决方案,北京AI开发`\n"
+        . "\n【description 规范】60~100 字，一段独立描述，强调本地化/一对一/上门，**不能与 title_suffix 重复**\n"
+        . "\n**只返回纯 JSON**（不要 ```json``` 包裹、不要任何额外说明）：\n"
+        . "{\"title_suffix\":\"...\",\"keywords\":\"...\",\"description\":\"...\"}";
     // 直接用 ai_http_post 自定义 temperature=1.1（提高多样性，避免 AI 重复同一组合）
     $apiUrl = rtrim($apiUrl, '/');
     if (!preg_match('#/chat/completions$#', $apiUrl)) {
@@ -439,44 +485,68 @@ function ai_city_tdk(string $cityName, string $industry = '网站建设'): array
     if (mb_strpos($kw, $cityName) === false) {
         $kw = $cityName . $industry . ',' . $kw;
     }
-    // 后端规则兜底：title_suffix 必须简洁（≤16 字、以 - 开头、含城市名 + 服务短语；防堆砌 / 防超长 / 防糊弄）
+    // 后端规则兜底：title_suffix 严格按 SEO 黄金格式校验
+    //   · 4 段结构：地域词 · 核心服务 · 差异化词 · 品牌词
+    //   · 字数 8~22 字（百度 PC/移动端安全区）
+    //   · 末尾必须含品牌词
+    //   · 必须含地域词 + 行业词
     $ts = trim($ts);
 
-    // 1) 移除「连续堆砌符号」：只清理像 "AI---服务" "北京===服务" 这种重复 ≥2 的"装饰性"分隔符
-    //    （保留单个 - · _ 等正常装饰，让 AI 的"网站必要分隔符"得以呈现）
-    $ts = preg_replace('/[\-—=+_·]{2,}/u', '-', $ts) ?? $ts;
+    // 0) 强制去除前导 `- ` `· ` `_ ` 等（SEO 黄金格式不以 `-` 开头，4 段用 · 分隔）
+    $ts = ltrim($ts);
+    // 兼容旧站的 `-北京` 写法：去掉前导 - 后接空格
+    if (preg_match('/^[-—_·]\s*/u', $ts)) {
+        $ts = preg_replace('/^[-—_·]\s*/u', '', $ts);
+    }
 
-    // 2) 取首段（AI 偶尔会把多段塞到一个字段；只保留以 - 开头或首个换行/中文句号前的部分）
+    // 1) 合并「连续堆砌符号」：≥2 个相同分隔符合并为单 `·`（保留单个 - · _ 装饰）
+    $ts = preg_replace('/[\-—=+_·]{2,}/u', '·', $ts) ?? $ts;
+
+    // 2) 取首段（避免 AI 把多段塞到一个字段；只保留首个分隔符前的部分）
     if (preg_match('/^(.+?)([。\n\r;；]|$)/u', $ts, $m)) {
         $ts = trim($m[1]);
     }
 
-    // 3) 截断到 18 字（防 AI 输出过长；同时保留 AI 设计的中间分隔符）
-    if (mb_strlen($ts) > 18) {
-        $cut = mb_substr($ts, 0, 18);
-        // rtrim 仅去掉末尾的常见分隔符（不影响中间）
+    // 3) 字数限制 8~22 字；超长截断 + 末尾 rtrim
+    if (mb_strlen($ts) > 22) {
+        $cut = mb_substr($ts, 0, 22);
         $ts = rtrim($cut, '、, ,-+-_·');
-        if (mb_strpos($ts, $cityName) === false) {
-            $ts = '-' . $cityName . $industry . '服务';
+        if (mb_strlen($ts) < 8) {
+            $ts = '-' . $cityName . $industry . $brandShort;
         }
     }
-
-    // 4) 必须 - 开头（SEO 标题惯例；保留 AI 在中段加的 · _ 等装饰）
-    if (mb_strpos($ts, '-') !== 0) {
-        $ts = '-' . $ts;
+    if (mb_strlen($ts) < 8) {
+        $ts = $cityName . '·' . $industry . '·服务中心·' . $brandShort;
     }
 
-    // 5) 必须含城市名；缺失则强制注入（保留 AI 中段的 - · _ 等）
+    // 4) 必须含城市名；缺失则强制注入（保留 AI 中段的 · _）
     if (mb_strpos($ts, $cityName) === false) {
-        // 智能插入：在 - 后立刻接城市名，避免"城市+装饰"被剥离的情况
-        $ts = '-' . $cityName . mb_ltrim($industry . mb_substr($ts, 1), '-—=+·');
+        $ts = $cityName . '·' . $industry . '·官方团队·' . $brandShort;
     }
 
-    // 6) 防糊弄：服务部分（去掉 "- " 和城市名）必须 ≥ 4 字；过短则补"服务中心"
-    $svc = trim(mb_substr($ts, 2 + mb_strlen($cityName)));
-    if (mb_strlen($svc) < 4) {
-        $svc = $svc . '服务中心';
-        $ts = '-' . $cityName . $svc;
+    // 5) 必须含行业词（核心服务）
+    if (mb_strpos($ts, $industry) === false) {
+        $ts = $ts . '·' . $industry . '·' . $brandShort;
+    }
+
+    // 6) 强制末尾追加品牌词（防 AI 不写品牌名）—— 不区分分隔符
+    $brandRegex = '/[-_·\s]*(?:' . preg_quote($brandShort, '/') . '|得应盯|得应盯网络科技)\s*$/u';
+    if (!preg_match($brandRegex, $ts)) {
+        $ts = $ts . '·' . $brandShort;
+    }
+
+    // 7) 防糊弄：核心服务段（去掉城市名、品牌名后）必须 ≥ 4 字
+    $core = str_replace([$cityName, $brandShort, '得应盯'], '', $ts);
+    $core = trim(preg_replace('/[-_·\s]+/u', '', $core) ?? '');
+    if (mb_strlen($core) < 4) {
+        $ts = $cityName . '·' . $industry . '·一对一上门·' . $brandShort;
+    }
+
+    // 8) 最终字数 ≤22（兜底）
+    if (mb_strlen($ts) > 22) {
+        // 保留前段 + 强制品牌结尾
+        $head = mb_substr($ts, 0, 22 - 2 - mb_strlen($brandShort));
+        $ts = rtrim($head, '·-_ ,、') . '·' . $brandShort;
     }
     // keywords 限制最多 6 个（按逗号/中文逗号切分）
     $kwParts = preg_split('/[,,]/u', $kw) ?: [];
@@ -504,15 +574,29 @@ function city_tdk_auto(string $industry = '网站建设'): array
     if ($industry === '') {
         $industry = '网站建设';
     }
+    $brand = trim((string)setting('site_name', ''));
+    if ($brand === '') { $brand = '得应盯'; }
+    if (mb_strlen($brand) > 8) { $brand = mb_substr($brand, 0, 8); }
+    $brandShort = preg_replace('/\s+/', '', $brand) ?: '得应盯';
+    // 模板版差异化词库（hash 城市名 → 选一个组合，确保 300 城不会全一样）
+    $diffTpl = [
+        ['一对一上门', '本地化部署', '实战专家'],
+        ['7天上手', '本地团队', '官方服务'],
+        ['当天响应', '资深顾问', '实战派'],
+        ['30天可查', '本地服务商', '落地专家'],
+    ];
     $rows = DB::all('SELECT * FROM city_sites WHERE site_id=?', [$sid]);
     $updated = 0;
-    foreach ($rows as $c) {
+    foreach ($rows as $i => $c) {
         $titleSuffix = trim((string)$c['title_suffix']);
         $keywords    = trim((string)$c['keywords']);
         $description = trim((string)$c['description']);
         $need = false;
         if ($titleSuffix === '') {
-            $titleSuffix = '- ' . $c['city'] . $industry;
+            // 按城市 ID 哈希选 3 词差异化组合 + 强制品牌词后置
+            $pick = $diffTpl[$i % 4];
+            $diffPicked = $pick[$i % 3];
+            $titleSuffix = $c['city'] . '·' . $industry . '·' . $diffPicked . '·' . $brandShort;
             $need = true;
         }
         if ($keywords === '') {
