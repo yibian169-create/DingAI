@@ -44,6 +44,7 @@ $tplPath = '';
 if ($safeName !== '') {
     $builtinDir = 'tpls/builtin/' . $safeName;
     $siteDir    = 'tpls/site_' . current_site_id() . '/' . $safeName;
+    $demoDir    = 'tpls/' . $safeName; // 演示模板（_demo_template*）直接放 tpls/ 根下
     if (is_file(__DIR__ . '/../' . $builtinDir . '/style.css')) {
         $tplCss = $builtinDir . '/style.css';
         $tplPath = $builtinDir;
@@ -52,6 +53,10 @@ if ($safeName !== '') {
         $tplCss = $siteDir . '/style.css';
         $tplPath = $siteDir;
         if (is_file(__DIR__ . '/../' . $siteDir . '/main.js')) { $tplJs = $siteDir . '/main.js'; }
+    } elseif (is_file(__DIR__ . '/../' . $demoDir . '/style.css')) {
+        $tplCss = $demoDir . '/style.css';
+        $tplPath = $demoDir;
+        if (is_file(__DIR__ . '/../' . $demoDir . '/main.js')) { $tplJs = $demoDir . '/main.js'; }
     }
 }
 $tplVer = $tplCss ? filemtime(__DIR__ . '/../' . $tplCss) : time();

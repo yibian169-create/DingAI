@@ -1536,9 +1536,15 @@ $TPL_NAMES = [
     'snack'       => '休闲零食',
     'hometextile' => '家纺家居',
     'family'      => '县城亲子互动',
+    // 演示/内置模板目录名 → 中文显示名（2025 修复：模板中心不再空白）
+    '_demo_template'                 => '通用演示（活力橙）',
+    '_demo_template_factory'         => '工业工厂',
+    '_demo_template_home_textile'    => '家纺家居·经典',
+    '_demo_template_home_textile2'   => '家纺家居·暖调',
+    '_demo_template_textile'         => '纺织布料',
 ];
 
-/** 解析模板目录（内置优先，其次站点历史模板） */
+/** 解析模板目录（内置优先，其次站点历史模板，再次演示模板 _demo*） */
 function resolve_tpl_dir(string $name): ?string
 {
     $safe = preg_replace('/[^a-zA-Z0-9_-]/', '', $name);
@@ -1552,6 +1558,28 @@ function resolve_tpl_dir(string $name): ?string
     $site = __DIR__ . '/tpls/site_' . current_site_id() . '/' . $safe;
     if (is_dir($site)) {
         return $site;
+    }
+    // 兼容演示模板目录（_demo_template*，即内置行业模板）
+    $demo = __DIR__ . '/tpls/' . $safe;
+    if (is_dir($demo) && is_file($demo . '/style.css')) {
+        return $demo;
+    }
+    // _demo_template_home_textile 之类：尝试匹配（去掉 _demo_template 前缀的映射）
+    $map = [
+        'default' => '_demo_template',
+        'catering' => '_demo_template_factory',
+        'factory' => '_demo_template_factory',
+        'hometextile' => '_demo_template_home_textile',
+        'home_textile' => '_demo_template_home_textile',
+        'textile' => '_demo_template_textile',
+        'hometextile2' => '_demo_template_home_textile2',
+        'home_textile2' => '_demo_template_home_textile2',
+    ];
+    if (isset($map[$safe])) {
+        $mapped = __DIR__ . '/tpls/' . $map[$safe];
+        if (is_dir($mapped)) {
+            return $mapped;
+        }
     }
     return null;
 }
@@ -1594,9 +1622,20 @@ function apply_tpl_home_json(string $tplName, int $siteId): bool
 
 if ($m === 'tpls') {
     $tpls = [];
-    // 内置模板
-    foreach (glob($builtinDir . '/*', GLOB_ONLYDIR) as $d) {
+    // 内置模板：扫描 tpls/builtin/* 与 tpls/_demo*（演示模板即内置行业模板，含 style.css/main.js/home.json）
+    $scanDirs = [];
+    if (is_dir($builtinDir)) { $scanDirs[] = $builtinDir; }
+    foreach ([__DIR__ . '/tpls/_demo_template', __DIR__ . '/tpls/_demo_template_factory', __DIR__ . '/tpls/_demo_template_home_textile', __DIR__ . '/tpls/_demo_template_home_textile2', __DIR__ . '/tpls/_demo_template_textile'] as $d) {
+        if (is_dir($d)) { $scanDirs[] = $d; }
+    }
+    // 也扫描 tpls/ 下所有 _demo* 目录（未来新增演示模板自动识别）
+    foreach (glob(__DIR__ . '/tpls/_demo*', GLOB_ONLYDIR) as $d) {
+        if (!in_array($d, $scanDirs, true)) { $scanDirs[] = $d; }
+    }
+    foreach ($scanDirs as $d) {
         $name = basename($d);
+        // 跳过：非模板目录（无 style.css 且无 home.json）
+        if (!is_file($d . '/style.css') && !is_file($d . '/home.json')) { continue; }
         $tpls[] = [
             'name'   => $name,
             'type'   => 'builtin',
