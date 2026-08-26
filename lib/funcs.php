@@ -858,9 +858,138 @@ function form_render_html(array $def): string
         }
         $html .= '</div>';
     }
+    $html .= form_captcha_html(); // 表单验证码（防垃圾机器人；GD 图形验证码 / 数学题 fallback）
     $html .= '<div class="q-form__item"><button type="submit" class="q-btn q-btn--grad">' . e($def['submit_text'] ?: '提交') . '</button></div>';
     $html .= '</form>';
     return $html;
+}
+
+/* ============ 表单验证码（前台防垃圾机器人） ============ */
+
+/** 确保前台会话已启动（验证码答案存 session；仅表单页按需开启，避免全站 cookie） */
+function form_captcha_session(): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        // SameSite=Lax 防跨站；HttpOnly 防 JS 读取
+        @session_set_cookie_params(['samesite' => 'Lax', 'httponly' => true, 'path' => '/']);
+        @session_start();
+    }
+}
+
+/**
+ * 生成表单验证码：图形验证码（GD 优先）+ 数学题 fallback（无 GD 环境）
+ * 调用后把「验证码哈希」写入 $_SESSION['form_captcha_hash']，前端图片/文本由 form_captcha_html() 渲染
+ * @return array{code:string, math:bool} code=校验答案（明文），math=true 表示走数学题模式
+ */
+function form_captcha_new(): array
+{
+    form_captcha_session();
+    if (function_exists('imagecreatetruecolor')) {
+        // 图形验证码：4 位数字（易识别，干扰线 + 噪点）
+        $code = '';
+        for ($i = 0; $i < 4; $i++) {
+            $code .= random_int(0, 9);
+        }
+    } else {
+        // 无 GD：数学题（如 8 + 5 = ?）
+        $a = random_int(2, 20);
+        $b = random_int(1, 15);
+        $op = random_int(0, 1) ? '+' : '-';
+        if ($op === '-' && $b > $a) { [$a, $b] = [$b, $a]; } // 保证非负
+        $code = $a . $op . $b;
+    }
+    $_SESSION['form_captcha_hash'] = hash('sha256', strtolower((string)$code) . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
+    $_SESSION['form_captcha_ts'] = time();
+    return ['code' => $code, 'math' => !function_exists('imagecreatetruecolor')];
+}
+
+/** 输出图形验证码 PNG（GD 模式；输出后 exit，不可复用） */
+function form_captcha_image(string $code): void
+{
+    if (!function_exists('imagecreatetruecolor')) {
+        http_response_code(404);
+        exit('GD 不可用');
+    }
+    $w = 120; $h = 44;
+    $im = imagecreatetruecolor($w, $h);
+    $bg = imagecolorallocate($im, 244, 246, 252);
+    $fg = imagecolorallocate($im, 79, 70, 229); // 主题紫
+    imagefilledrectangle($im, 0, 0, $w, $h, $bg);
+    // 干扰线 4 条
+    for ($i = 0; $i < 4; $i++) {
+        $c = imagecolorallocate($im, random_int(150, 220), random_int(150, 220), random_int(220, 255));
+        imageline($im, random_int(0, $w), random_int(0, $h), random_int(0, $w), random_int(0, $h), $c);
+    }
+    // 噪点 80 个
+    for ($i = 0; $i < 80; $i++) {
+        $c = imagecolorallocate($im, random_int(0, 200), random_int(0, 200), random_int(0, 200));
+        imagesetpixel($im, random_int(0, $w - 1), random_int(0, $h - 1), $c);
+    }
+    // 数字（内置字体，无 TTF 依赖；每字随机偏移增强防 OCR）
+    $chars = str_split((string)$code);
+    $x = 12;
+    foreach ($chars as $ch) {
+        $col = imagecolorallocate($im, random_int(40, 90), random_int(40, 90), random_int(40, 90));
+        $y = random_int(6, 16);
+        imagechar($im, random_int(4, 5), $x, $y, $ch, $col);
+        $x += random_int(22, 28);
+    }
+    header('Content-Type: image/png');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    imagepng($im);
+    imagedestroy($im);
+    exit;
+}
+
+/**
+ * 渲染验证码 HTML（表单里插入用）：
+ *  - GD 模式：<img src="index.php?act=captcha_img"> + 点击刷新
+ *  - fallback：显示数学题文本 + 答案由 session 校验
+ */
+function form_captcha_html(): string
+{
+    $c = form_captcha_new();
+    if (!$c['math']) {
+        return '<div class="q-form__item q-form__captcha">'
+            . '<label class="q-form__label">验证码 <i class="q-form__req">*</i></label>'
+            . '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+            . '<img src="index.php?act=captcha_img&t=' . time() . '" alt="验证码" title="看不清？点击刷新" style="width:120px;height:44px;border-radius:8px;cursor:pointer;border:1px solid var(--border-tertiary)" onclick="this.src=\'index.php?act=captcha_img&t=\'+Date.now()">'
+            . '<input type="text" name="captcha" required placeholder="输入右侧 4 位数字" style="flex:1;min-width:120px;max-width:200px">'
+            . '</div></div>';
+    }
+    // fallback 数学题：答案直接明文（低价值目标，session 校验即可）
+    return '<div class="q-form__item q-form__captcha">'
+        . '<label class="q-form__label">验证码 <i class="q-form__req">*</i></label>'
+        . '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
+        . '<span style="font-size:17px;font-weight:700;color:var(--primary);padding:8px 16px;background:var(--bg);border:1px solid var(--border-tertiary);border-radius:8px">' . e($c['code']) . ' = ?</span>'
+        . '<input type="text" name="captcha" required placeholder="输入计算结果" style="flex:1;min-width:120px;max-width:200px">'
+        . '</div></div>';
+}
+
+/**
+ * 校验表单验证码（提交时调用；一次性，成功即销毁）
+ * @return string 空串=通过；否则返回错误提示
+ */
+function form_captcha_verify(): string
+{
+    form_captcha_session();
+    $sent = trim((string)($_POST['captcha'] ?? ''));
+    if ($sent === '') {
+        return '请输入验证码';
+    }
+    // 5 分钟过期
+    if (empty($_SESSION['form_captcha_ts']) || time() - (int)$_SESSION['form_captcha_ts'] > 300) {
+        unset($_SESSION['form_captcha_hash'], $_SESSION['form_captcha_ts']);
+        return '验证码已过期，请刷新后重试';
+    }
+    $expect = $_SESSION['form_captcha_hash'] ?? '';
+    unset($_SESSION['form_captcha_hash'], $_SESSION['form_captcha_ts']); // 一次性
+    if ($expect === '') {
+        return '请先获取验证码';
+    }
+    $calc = hash('sha256', strtolower($sent) . '|' . ($_SERVER['REMOTE_ADDR'] ?? ''));
+    return hash_equals($expect, $calc) ? '' : '验证码错误';
 }
 
 /** HTML 转义 */

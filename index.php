@@ -605,6 +605,17 @@ if ($act === 'city') {
 }
 
 /* ---------- 自定义表单（前台提交页） ---------- */
+/* ---------- 表单验证码图片（GD 图形验证码；无 GD 时表单走数学题 fallback 不走此路由） ---------- */
+if ($act === 'captcha_img') {
+    // 只输出图片，不渲染页面（防缓存）
+    form_captcha_session();
+    // 已生成过（表单页已调用 form_captcha_html → form_captcha_new），直接复用 hash 对应的 code？
+    // 说明：验证码 code 明文不存 session（防爆破），图片不可离线重放 → 此处每次重新生成并写入 hash
+    $c = form_captcha_new();
+    form_captcha_image($c['code']); // 内部 exit
+}
+
+/* ---------- 自定义表单前台 ---------- */
 if ($act === 'form') {
     $fid = (int)($_GET['id'] ?? 0);
     /* site_id=0 视为「全局共享表单」，任何站点（含租户/分站视图）均可访问，避免前台 404 */
@@ -622,29 +633,35 @@ if ($act === 'form') {
     $okMsg  = '';
     $errMsg = '';
     if (($_POST['submit'] ?? '') === '1') {
-        $data = [];
-        $errs = [];
-        foreach ($fields as $f) {
-            $nameF = $f['name'];
-            $val   = $_POST[$nameF] ?? '';
-            if (is_array($val)) {
-                $val = array_values(array_filter($val));
-            }
-            if (!empty($f['required'])) {
-                $empty = is_array($val) ? !count($val) : trim((string)$val) === '';
-                if ($empty) {
-                    $errs[] = '请填写：' . $f['label'];
-                }
-            }
-            $data[$nameF] = is_array($val) ? implode('、', $val) : trim((string)$val);
-        }
-        if (!$errs) {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-            $region = ip_to_region($ip);
-            DB::insert('INSERT INTO form_data(site_id,form_id,data,ip,province,city) VALUES(?,?,?,?,?,?)', [$sid, $fid, json_encode($data, JSON_UNESCAPED_UNICODE), $ip, $region['province'], $region['city']]);
-            $okMsg = '提交成功！我们会尽快与您联系。';
+        // 表单验证码（防垃圾机器人；一次校验，5 分钟过期）
+        $captchaErr = form_captcha_verify();
+        if ($captchaErr !== '') {
+            $errMsg = $captchaErr;
         } else {
-            $errMsg = implode('；', $errs);
+            $data = [];
+            $errs = [];
+            foreach ($fields as $f) {
+                $nameF = $f['name'];
+                $val   = $_POST[$nameF] ?? '';
+                if (is_array($val)) {
+                    $val = array_values(array_filter($val));
+                }
+                if (!empty($f['required'])) {
+                    $empty = is_array($val) ? !count($val) : trim((string)$val) === '';
+                    if ($empty) {
+                        $errs[] = '请填写：' . $f['label'];
+                    }
+                }
+                $data[$nameF] = is_array($val) ? implode('、', $val) : trim((string)$val);
+            }
+            if (!$errs) {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                $region = ip_to_region($ip);
+                DB::insert('INSERT INTO form_data(site_id,form_id,data,ip,province,city) VALUES(?,?,?,?,?,?)', [$sid, $fid, json_encode($data, JSON_UNESCAPED_UNICODE), $ip, $region['province'], $region['city']]);
+                $okMsg = '提交成功！我们会尽快与您联系。';
+            } else {
+                $errMsg = implode('；', $errs);
+            }
         }
     }
     $title = ($def['title'] ?: $def['name']) . $suffix;
