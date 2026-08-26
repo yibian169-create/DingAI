@@ -79,17 +79,24 @@ function settings_clear_cache(?int $siteId = null): void
     }
 }
 
-/** 读取单个配置（按当前站点） */
+/** 读取单个配置（按当前站点）
+ *  后台已登录管理员每次强制读库，避免 settings_all 缓存导致保存后回显仍是旧值 */
 function setting(string $key, string $def = '', ?int $siteId = null): string
 {
     $siteId = $siteId ?? current_site_id();
-    if (!isset(SettingsCache::$cache[$siteId])) {
-        SettingsCache::$cache[$siteId] = [];
-        foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
-            SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
+    $isAdmin = (PHP_SAPI !== 'cli') && is_admin();
+    if ($isAdmin) {
+        $row = DB::one('SELECT `value` FROM settings WHERE site_id=? AND `key`=?', [$siteId, $key]);
+        $raw = $row['value'] ?? $def;
+    } else {
+        if (!isset(SettingsCache::$cache[$siteId])) {
+            SettingsCache::$cache[$siteId] = [];
+            foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
+                SettingsCache::$cache[$siteId][$r['key']] = $r['value'];
+            }
         }
+        $raw = SettingsCache::$cache[$siteId][$key] ?? $def;
     }
-    $raw = SettingsCache::$cache[$siteId][$key] ?? $def;
     // 敏感键（AI Key）读取时解密；非密文原样返回，兼容历史明文数据
     if (in_array($key, _secret_keys(), true)) {
         return dec_secret($raw);
@@ -97,10 +104,19 @@ function setting(string $key, string $def = '', ?int $siteId = null): string
     return $raw;
 }
 
-/** 读取全部配置（按当前站点） */
+/** 读取全部配置（按当前站点）
+ *  后台已登录管理员每次强制读库，确保保存后回显最新值 */
 function settings_all(): array
 {
     $siteId = current_site_id();
+    $isAdmin = (PHP_SAPI !== 'cli') && is_admin();
+    if ($isAdmin) {
+        $out = [];
+        foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
+            $out[$r['key']] = $r['value'];
+        }
+        return $out;
+    }
     if (!isset(SettingsCache::$cache[$siteId])) {
         SettingsCache::$cache[$siteId] = [];
         foreach (DB::all('SELECT `key`,`value` FROM settings WHERE site_id=?', [$siteId]) as $r) {
