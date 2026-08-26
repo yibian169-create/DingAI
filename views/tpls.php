@@ -648,6 +648,17 @@
 </div>
 
 <script>
+/* ===== 全国分站重构（2025）DIY 编辑器异常捕获 — 任何抛错都显式呈现，不再静默崩溃 ===== */
+window.addEventListener('error', function(ev){
+  console.error('[DIY 错误]', ev.message, ev.filename + ':' + ev.lineno);
+  var panel = document.getElementById('veLib');
+  if (panel) {
+    panel.insertAdjacentHTML('afterbegin',
+      '<div style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:12px"><b>⚠ DIY 编辑器出错</b><br>' +
+      '<code style="font-size:12px;color:#7f1d1d">' + (ev.message || '未知错误') + '</code><br>' +
+      '<small style="color:#991b1b">请截图此错误反馈给管理员。可刷新页面重试。</small></div>');
+  }
+});
 (function() {
   var INIT = window.VE_INIT || {allowed:{}, icons:{}, desc:{}, layout:[], modules:{}};
   var SCHEMA = {
@@ -1058,11 +1069,11 @@
       });
     });
   }
-  window.veDev = function(dev, btn){ document.getElementById('veFrameWrap').className='ve-frame-wrap '+dev; document.querySelectorAll('.ve-dev button').forEach(function(b){ b.classList.remove('active'); }); btn.classList.add('active'); if(selKey){ var f = document.getElementById('veFrame'); if(f && f.contentWindow){ setTimeout(function(){ f.contentWindow.postMessage({ve:'scroll-to', key:selKey}, '*'); }, 60); } } };
-  window.veAdd = function(){ var k=sel.value; if(!k) return; layout.push({key:k,show:1}); modules[k]=modules[k]||{}; selKey=k; renderLib(); renderProp(); veRefresh(); };
+  window.veDev = function(dev, btn){ try{ document.getElementById('veFrameWrap').className='ve-frame-wrap '+dev; document.querySelectorAll('.ve-dev button').forEach(function(b){ b.classList.remove('active'); }); btn.classList.add('active'); if(selKey){ var f = document.getElementById('veFrame'); if(f && f.contentWindow){ setTimeout(function(){ f.contentWindow.postMessage({ve:'scroll-to', key:selKey}, '*'); }, 60); } } }catch(e){ console.error('[veDev]', e); } };
+  window.veAdd = function(){ try{ var k=sel.value; if(!k) return; layout.push({key:k,show:1}); modules[k]=modules[k]||{}; selKey=k; renderLib(); renderProp(); veRefresh(); }catch(e){ console.error('[veAdd]', e); } };
   window.veRefresh = veRefresh;
-  window.veReset = function(){ if(!confirm('恢复默认布局（hero→contact 共 8 个模块），并清空自定义配置？')) return; layout=['hero','scenario','stats','capabilities','about','workflow','cta','contact'].map(function(k){return {key:k,show:1};}); modules={}; selKey=null; renderLib(); renderProp(); veRefresh(); };
-  window.veSave = function(){ document.getElementById('veLayoutInput').value=JSON.stringify(layout); document.getElementById('veModulesInput').value=JSON.stringify(modules); document.getElementById('veForm').submit(); };
+  window.veReset = function(){ try{ if(!confirm('恢复默认布局（hero→contact 共 8 个模块），并清空自定义配置？')) return; layout=['hero','scenario','stats','capabilities','about','workflow','cta','contact'].map(function(k){return {key:k,show:1};}); modules={}; selKey=null; renderLib(); renderProp(); veRefresh(); }catch(e){ console.error('[veReset]', e); } };
+  window.veSave = function(){ try{ document.getElementById('veLayoutInput').value=JSON.stringify(layout); document.getElementById('veModulesInput').value=JSON.stringify(modules); document.getElementById('veForm').submit(); }catch(e){ console.error('[veSave]', e); alert('保存失败：' + (e.message||e)); } };
   renderLib();
   veRefresh();
 })();

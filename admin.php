@@ -1441,9 +1441,17 @@ if ($m === 'settings_save') {
             save_setting($k, isset($_POST[$k]) ? '1' : '0');
             continue;
         }
-        if (isset($_POST[$k])) {
-            // UPSERT（按站点）：key 不存在时自动插入
-            DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, $k, trim($_POST[$k])]);
+        // 【BUG 修复 2026-08-27】原代码 isset 判 + trim 写入，会把"用户没填的字段"误判为非空后写入空串覆盖数据库
+        // 改为：仅当字段存在且非空字符串时才覆盖（用户没填 → 保留 DB 原值）
+        if (array_key_exists($k, $_POST)) {
+            $val = trim((string)$_POST[$k]);
+            if ($val !== '') {
+                DB::run("INSERT INTO settings(site_id,`key`,`value`) VALUES(?,?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)", [$sid, $k, $val]);
+            }
+            // 空值（val === ''）跳过 —— 保留 DB 原值；如需主动清空某字段，用 _clear_<key>=1 触发
+            if ($val === '' && isset($_POST["_clear_$k"]) && $_POST["_clear_$k"] === '1') {
+                DB::run("UPDATE settings SET `value`='' WHERE site_id=? AND `key`=?", [$sid, $k]);
+            }
         }
     }
     $tab = $_POST['tab'] ?? '';
