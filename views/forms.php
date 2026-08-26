@@ -11,16 +11,50 @@
 <style>
 .fld-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px}
 .fld-head h3{font-size:15px;margin:0}
-.fld-list{display:flex;flex-direction:column;gap:10px}
+.fld-list{display:flex;flex-direction:column;gap:12px}
 .fld-row{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.fld-row__head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--toolbar-bg);border-bottom:1px solid var(--line)}
-.fld-row__num{width:24px;height:24px;display:grid;place-items:center;background:#eef2ff;color:var(--primary);border-radius:50%;font-size:12px;font-weight:700}
-.fld-row__head input.fld-label{flex:1;border:none;background:transparent;padding:0;font-size:14px;font-weight:600}
-.fld-row__head select.fld-type{width:auto;min-width:100px}
-.fld-row__head label.fld-req{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
-.fld-row__head button.fld-del{width:26px;height:26px;border:none;border-radius:6px;background:#fee2e2;color:var(--danger);cursor:pointer}
-.fld-row__body{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-.fld-row__body input,.fld-row__body textarea{border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px}
+/* ====== 全国分站重构（2025）表单字段配置 UI 三层视觉 ======
+   ① 字段标签（label，用户看到的）→ 红色突出、粗体、最显眼
+   ② 字段名（name，系统用的英文，可留空） → 蓝色边框、中等
+   ③ 类型/必填/占位/选项/删除 → 弱化灰底，最不显眼
+   ============================================================== */
+.fld-row__head{padding:12px 14px 8px;background:var(--toolbar-bg);border-bottom:1px dashed var(--line)}
+.fld-row__num{width:24px;height:24px;display:grid;place-items:center;background:#eef2ff;color:var(--primary);border-radius:50%;font-size:12px;font-weight:700;flex-shrink:0}
+/* ① 字段标签 input —— 红框粗体最显眼 */
+.fld-row__head input.fld-label{
+  flex:1;border:2px solid #ef4444;background:#fef2f2;padding:11px 14px;font-size:15px;font-weight:700;
+  border-radius:8px;color:var(--text);min-width:0;transition:all .15s ease;margin-left:8px;margin-right:10px
+}
+.fld-row__head input.fld-label:focus{
+  outline:none;border-color:#dc2626;background:#fee2e2;box-shadow:0 0 0 3px rgba(239,68,68,.18)
+}
+.fld-row__head input.fld-label::placeholder{color:#fca5a5;font-weight:500}
+/* 类型下拉 + 必填复选框 → 紧凑靠右 */
+.fld-row__head select.fld-type{
+  width:auto;min-width:100px;border:1px solid var(--line);border-radius:6px;padding:6px 9px;
+  font-size:12.5px;color:var(--muted);background:var(--bg);cursor:pointer
+}
+.fld-row__head label.fld-req{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px;opacity:.85}
+.fld-row__head button.fld-del{
+  width:26px;height:26px;border:none;border-radius:6px;background:#fee2e2;color:var(--danger);cursor:pointer;font-size:14px
+}
+/* ② 字段名（name）—— 蓝色边框中等 */
+.fld-row__body{padding:8px 14px 14px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.fld-row__body input.fld-name{
+  border:1.5px solid #818cf8;background:#eef2ff;padding:10px 13px;font-size:13.5px;font-weight:500;
+  border-radius:7px;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;width:100%
+}
+.fld-row__body input.fld-name:focus{outline:none;border-color:#6366f1;background:#e0e7ff}
+/* ③ 占位提示 + 选项 → 弱化灰底 */
+.fld-row__body input.fld-ph,
+.fld-row__body textarea.fld-options{
+  border:1px dashed var(--line);background:var(--bg);padding:8px 11px;font-size:12.5px;color:var(--muted);
+  border-radius:6px;width:100%
+}
+/* 给最关键的字段加一个醒目标签"显示名称" */
+.fld-row__head{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.fld-label-hint{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#dc2626;font-weight:600;background:#fee2e2;padding:3px 8px;border-radius:5px;flex-shrink:0}
+.fld-name-hint{display:inline-block;font-size:11px;color:#6366f1;font-weight:600;background:#eef2ff;padding:2px 8px;border-radius:5px}
 </style>
 </head>
 <body>
@@ -117,15 +151,17 @@ function addField(f) {
   box.innerHTML =
     '<div class="fld-row__head">' +
       '<span class="fld-row__num">' + fieldSeq + '</span>' +
-      '<input class="fld-label" placeholder="字段名称，如：姓名" value="' + esc(f.label || '') + '">' +
+      '<span class="fld-label-hint">显示给访客</span>' +
+      '<input class="fld-label" placeholder="字段名称（必填）：姓名 / 手机号 / 公司名…" value="' + esc(f.label || '') + '">' +
       '<select class="fld-type" onchange="fldTypeChange(this)">' + typeOpts + '</select>' +
       '<label class="fld-req"><input type="checkbox" class="fld-required"' + (f.required ? ' checked' : '') + '>必填</label>' +
       '<button type="button" class="fld-del" onclick="this.closest(\'.fld-row\').remove()">✕</button>' +
     '</div>' +
     '<div class="fld-row__body">' +
-      '<input class="fld-name" placeholder="字段名（英文，自动生成可留空）" value="' + esc(f.name || '') + '">' +
-      '<input class="fld-ph" placeholder="占位提示（可留空）" value="' + esc(f.placeholder || '') + '" style="display:' + (type === 'select' || type === 'radio' || type === 'checkbox' || type === 'date' ? 'none' : '') + '">' +
-      '<textarea class="fld-options" placeholder="选项，每行一个（下拉/单选/多选用）" style="display:' + (type === 'select' || type === 'radio' || type === 'checkbox' ? '' : 'none') + '" rows="3">' + esc((f.options || []).join('\n')) + '</textarea>' +
+      '<div style="display:flex;align-items:center;gap:8px"><span class="fld-name-hint">系统字段名（英文，可留空自动生成）</span></div>' +
+      '<input class="fld-name" placeholder="如：name / phone / company（留空自动用拼音+随机）" value="' + esc(f.name || '') + '">' +
+      '<input class="fld-ph" placeholder="占位提示（不重要，可留空，如：\"请输入您的姓名\"）" value="' + esc(f.placeholder || '') + '" style="display:' + (type === 'select' || type === 'radio' || type === 'checkbox' || type === 'date' ? 'none' : '') + '">' +
+      '<textarea class="fld-options" placeholder="选项，每行一个（仅下拉/单选/多选需要）" style="display:' + (type === 'select' || type === 'radio' || type === 'checkbox' ? '' : 'none') + '" rows="3">' + esc((f.options || []).join('\n')) + '</textarea>' +
     '</div>';
   document.getElementById('fldList').appendChild(box);
 }
