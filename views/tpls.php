@@ -402,6 +402,7 @@
     $tab = $_GET['sett'] ?? 'global';
     $from = 'tpls';
     $settingsBaseUrl = 'admin.php?m=tpls&tab=theme&sett=';
+    $data = $data ?? settings_all();   // 修复：从 settings 表读取已保存值回显
     require __DIR__ . '/tpl_edit_panels.php';
     ?>
 
