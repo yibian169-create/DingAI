@@ -1737,8 +1737,14 @@ function ip_to_region(string $ip): array
         if ($resp !== false) {
             $j = json_decode($resp, true);
             if (is_array($j)) {
-                $prov = (string)($j['data']['province'] ?? $j['province'] ?? '');
-                $city = (string)($j['data']['city'] ?? $j['city'] ?? '');
+                // 百度 IP 定位：content.address_detail.province/city
+                if (isset($j['content']['address_detail'])) {
+                    $prov = (string)($j['content']['address_detail']['province'] ?? '');
+                    $city = (string)($j['content']['address_detail']['city'] ?? '');
+                } else {
+                    $prov = (string)($j['data']['province'] ?? $j['province'] ?? '');
+                    $city = (string)($j['data']['city'] ?? $j['city'] ?? '');
+                }
                 if ($prov !== '') {
                     $city = preg_replace('/[市区县]$/u', '', $city !== '' ? $city : $prov);
                     return ['province' => $prov, 'city' => $city];
