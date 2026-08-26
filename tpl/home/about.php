@@ -3,8 +3,7 @@ $hm = []; if (!empty($settings['home_modules'])) { $hm = json_decode($settings['
 $a = $hm['about'] ?? [];
 $kicker  = $a['kicker']   ?? 'AI DIGITAL WORKFORCE';
 $title   = $a['title']    ?? 'AI 员工<br>处理 <em>多流程复杂数据任务</em>';
-// 优先读可视化编辑器配置，未配置时回退到「主题设置」的关于文案
-$desc    = $a['desc']     ?? ($settings['about_text'] ?? '像雇佣一名 7×24 小时在线的数据专员，得应盯 AI 员工能自动完成数据上传、解析、标准化、汇总分析、报告生成与问题闭环，把重复繁琐的数据工作交给 AI。');
+$desc    = $a['desc']     ?? '像雇佣一名 7×24 小时在线的数据专员，得应盯 AI 员工能自动完成数据上传、解析、标准化、汇总分析、报告生成与问题闭环，把重复繁琐的数据工作交给 AI。';
 $ctaText = $a['cta_text'] ?? '了解 AI 员工能力';
 $ctaUrl  = $a['cta_url']  ?? '#';
 ?>
