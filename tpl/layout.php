@@ -179,7 +179,10 @@ $tplVer = $tplCss ? filemtime(__DIR__ . '/../' . $tplCss) : time();
     </div>
     <div class="q-footer__bar">
         <div class="q-container" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-            <span>© <?= date('Y') ?> <?= e($site) ?> 版权所有</span>
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                <span>© <?= !empty($S['copyright_year']) ? e($S['copyright_year']) : date('Y') ?> <?= e($site) ?> 版权所有</span>
+                <?php if (!empty($S['beian'])): ?><span><?= e($S['beian']) ?></span><?php endif; ?>
+            </div>
             <span>Powered by <?= e($site) ?> · deyingding-php<?php if (!empty($S['techsupport_text']) && !empty($S['techsupport_url'])): ?> · 技术支持：<a href="<?= e($S['techsupport_url']) ?>" target="_blank" rel="noopener"><?= e($S['techsupport_text']) ?></a><?php endif; ?></span>
         </div>
     </div>
