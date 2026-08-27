@@ -32,3 +32,9 @@ Thumbs.db
 # 依赖（本项目零 Composer 依赖；若未来引入则启用）
 /vendor/
 composer.lock
+
+# 调试自检脚本（会回显 ai_api_key / csrf_token 等配置，严禁入库 / 部署到生产）
+diag.php
+
+# 打包产物（部署用 zip，由本地构建生成，不入库）
+outputs/

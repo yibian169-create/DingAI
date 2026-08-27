@@ -1415,6 +1415,8 @@ if ($m === 'form_data_del') {
 
 /* ---------- 模板编辑 ---------- */
 if ($m === 'settings') {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
     render('tpl_edit.php', ['data' => settings_all()]);
     exit;
 }
@@ -1437,26 +1439,54 @@ if ($m === 'settings_save') {
             // 安全
             'login_captcha',
         ];
+        // 调试模式：打开后能直接看到后台收到了什么、写进了没有
+        $debugMode = !empty($_GET['debug']) || !empty($_POST['_debug']);
+        $debug = [];
+        if ($debugMode) {
+            $debug[] = '【调试模式】POST 总字段数：' . count($_POST);
+            $debug[] = 'CSRF 提交值：' . ($_POST['csrf'] ?? '⟨缺失⟩');
+            $debug[] = 'SESSION CSRF：' . ($_SESSION['csrf'] ?? '⟨未生成⟩');
+            $debug[] = '当前站点 ID：' . current_site_id();
+        }
         foreach ($keys as $k) {
             if ($k === 'login_captcha') { // 复选框：未勾选时 POST 无该字段，需显式写 0
-                save_setting($k, isset($_POST[$k]) ? '1' : '0');
+                $val = isset($_POST[$k]) ? '1' : '0';
+                save_setting($k, $val);
+                if ($debugMode) {
+                    $debug[] = "[{$k}] POST存在=" . (isset($_POST[$k]) ? '是' : '否') . " -> 保存值={$val}";
+                }
                 continue;
             }
-            // 仅当字段确实出现在 POST 中才处理（主题设置页每个 tab 只提交本 tab 字段，
-            // 其余 tab 字段不在 $_POST 里，跳过即可，不会误清空其它 tab）。
+            // 单页一览式：所有字段都在 POST 中。
+            // 防御规则：仅当提交值非空时才写入；若提交为空、但库里该字段已有非空值，则跳过，
+            // 避免“回显异常时空表单把已保存内容误清空”（这是此前后台保存后变空白的根因）。
             if (array_key_exists($k, $_POST)) {
                 $val = trim((string)$_POST[$k]);
-                if ($val !== '') {
-                    save_setting($k, $val);   // 健壮 upsert：存在则更新、不存在则插入
-                } elseif (!empty($_POST["_clear_$k"])) {
-                    // 显式要求清空该字段
-                    DB::run("UPDATE settings SET `value`='' WHERE site_id=? AND `key`=?", [$sid, $k]);
+                $dbCur = setting($k);
+                if ($val === '' && $dbCur !== '' && $dbCur !== null) {
+                    if ($debugMode) {
+                        $debug[] = "[{$k}] 提交为空且DB已有值(" . strlen((string)$dbCur) . "字符)，跳过（保留原值）";
+                    }
+                    continue;
                 }
-                // 其余情况（空值且未要求清空）：保留 DB 原值，不覆盖
+                save_setting($k, $val);
+                if ($debugMode) {
+                    $raw = DB::one('SELECT `value` FROM settings WHERE site_id=? AND `key`=?', [current_site_id(), $k]);
+                    $dbVal = $raw['value'] ?? '⟨查无⟩';
+                    $debug[] = "[{$k}] POST长度=" . strlen($_POST[$k]) . " -> 保存值={$val} -> DB当前值={$dbVal}";
+                }
+            } elseif ($debugMode) {
+                $debug[] = "[{$k}] POST中不存在，跳过";
             }
         }
         $tab = $_POST['tab'] ?? '';
         $from = $_POST['from'] ?? '';
+        if ($debugMode) {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo implode("\n", $debug);
+            echo "\n\n调试完成。若上面某 key 的「DB当前值」不等于「保存值」，说明写入未落库。";
+            exit;
+        }
         if ($from === 'tpls') {
             $redirect = 'admin.php?m=tpls&tab=theme' . ($tab ? '&sett=' . urlencode($tab) : '');
         } else {
@@ -1664,6 +1694,8 @@ if ($m === 'tpls') {
     try { $veLinks['forms']     = DB::all('SELECT id,name FROM form_defs WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 100', [$sid]); } catch (Throwable $e) {}
     try { $veLinks['downloads'] = DB::all('SELECT id,title,file_url FROM downloads WHERE site_id=? AND status=1 ORDER BY id DESC LIMIT 200', [$sid]); } catch (Throwable $e) {}
     try { $veLinks['images']    = DB::all('SELECT path,name FROM uploads WHERE site_id=? ORDER BY id DESC LIMIT 60', [$sid]); } catch (Throwable $e) {}
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
     render('tpls.php', [
         'tpls' => $tpls,
         'active' => setting('tpl_active', ''),
@@ -1873,12 +1905,14 @@ function render(string $tpl, array $data): void
     $data['admin_name'] = $_SESSION['admin_name'] ?? '';
     $data['is_admin'] = is_admin();
     $data['csrf_token'] = csrf_token();
+    // 某些视图会重新赋值 $data（如主题设置面板），所以先捕获 token，避免视图执行后读不到
+    $csrfToken = $data['csrf_token'];
     extract($data, EXTR_SKIP);
     ob_start();
     require __DIR__ . '/views/' . $tpl;
     $html = ob_get_clean();
     // 注入 CSRF Token 元信息 + 全局 fetch 包装（自动为 FormData POST 附加 token）
-    $token = e($data['csrf_token']);
+    $token = e($csrfToken);
     $inject = '<meta name="csrf-token" content="' . $token . '">' . "\n"
         . '<script>(function(){'
         . 'window.__CSRF__=function(){var m=document.querySelector(\'meta[name="csrf-token"]\');return m?m.getAttribute("content"):"";};'

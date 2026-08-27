@@ -397,12 +397,17 @@
 </form>
     <script>window.VE_INIT = <?= json_encode($veInit, JSON_UNESCAPED_UNICODE) ?>;</script>
 <?php elseif ($activeTab === 'theme'): ?>
-    <!-- ===== 主题设置 ===== -->
+    <!-- ===== 主题设置（单页一览式） ===== -->
+    <div style="margin-bottom:18px">
+      <h2 style="margin:0 0 4px">主题设置</h2>
+      <p style="margin:0;color:var(--muted);font-size:13px">统一配置全局品牌、主题、SEO、联系与备案信息；保存后主站所有页面实时跟随。</p>
+    </div>
     <?php
-    $tab = $_GET['sett'] ?? 'global';
+    $tab = '';
     $from = 'tpls';
-    $settingsBaseUrl = 'admin.php?m=tpls&tab=theme&sett=';
-    $data = $data ?? settings_all();   // 修复：从 settings 表读取已保存值回显
+    $settingsBaseUrl = 'admin.php?m=tpls&tab=theme';
+    // 模板中心 theme tab：强制读取最新配置回显，避免传入数据为空导致表单空白
+    $data = !empty($data) && is_array($data) ? $data : settings_all();
     require __DIR__ . '/tpl_edit_panels.php';
     ?>
 
