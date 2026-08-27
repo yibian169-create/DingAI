@@ -177,7 +177,11 @@ $sections = [
     <h3><span class="ico">🏢</span>品牌与联系方式</h3>
     <p class="desc">站点基础信息，会显示在导航、页脚、联系模块等全局位置 <mark>主站全局生效</mark></p>
     <div class="ts-fields">
-      <div class="field"><label>站点名称</label><input type="text" name="site_name" value="<?= e($data['site_name'] ?? '') ?>" placeholder="如：得应盯"></div>
+      <div class="field">
+        <label>站点名称（简称）</label>
+        <input type="text" name="site_name" value="<?= e($data['site_name'] ?? '') ?>" placeholder="如：得应盯">
+        <p style="margin:5px 0 0;font-size:12px;color:var(--muted)">显示在导航、页脚、LOGO 等品牌位置，不等同于网页标题。</p>
+      </div>
       <div class="field"><label>联系电话</label><input type="text" name="phone" value="<?= e($data['phone'] ?? '') ?>" placeholder="前台默认联系电话"></div>
       <div class="field"><label>联系邮箱</label><input type="text" name="email" value="<?= e($data['email'] ?? '') ?>" placeholder="service@example.com"></div>
       <div class="field full"><label>公司地址</label><input type="text" name="address" value="<?= e($data['address'] ?? '') ?>" placeholder="公司详细地址"></div>
@@ -280,6 +284,11 @@ $sections = [
     <h3><span class="ico">🔍</span>SEO · 联系 · 备案</h3>
     <p class="desc">仅作用于主站首页及列表页默认标题/关键词/描述；栏目与内容页可单独覆盖 <mark>主站全局生效</mark></p>
     <div class="ts-fields">
+      <div class="field full">
+        <label>网站标题（&lt;title&gt;）</label>
+        <input type="text" name="site_title" value="<?= e($data['site_title'] ?? '') ?>" placeholder="如：得应盯 - 企业官网 AI GEO CMS 建站系统">
+        <p style="margin:5px 0 0;font-size:12px;color:var(--muted)">浏览器标签页与搜索引擎结果中显示的完整网站标题；留空则使用「站点名称（简称）」。</p>
+      </div>
       <div class="field full"><label>SEO 关键词</label><input type="text" name="seo_keywords" value="<?= e($data['seo_keywords'] ?? '') ?>" placeholder="多个关键词用英文逗号分隔"></div>
       <div class="field full"><label>SEO 描述</label><textarea name="seo_description" rows="3" placeholder="120 字左右，吸引点击"><?= e($data['seo_description'] ?? '') ?></textarea></div>
       <div class="field"><label>服务电话</label><input type="text" name="contact_phone" value="<?= e($data['contact_phone'] ?? '') ?>" placeholder="留空使用全局联系电话"></div>

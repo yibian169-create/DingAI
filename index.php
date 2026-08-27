@@ -37,7 +37,8 @@ if ($city && !empty($city['pinyin'])) {
 
 /* 全站 SEO 兜底（分站可覆盖） */
 $cityArr    = $city ?: ['keywords' => '', 'description' => '', 'title_suffix' => '', 'city' => ''];
-$siteTitle  = setting('site_name', '得应盯网络科技');
+$siteTitle     = setting('site_name', '得应盯网络科技');      // 站点简称，用于导航/页脚/LOGO
+$sitePageTitle  = setting('site_title', '') ?: $siteTitle;    // 网页<title>完整标题，留空时回退到站点简称
 $keywords   = !empty($cityArr['keywords']) ? $cityArr['keywords'] : setting('seo_keywords');
 $descAll    = !empty($cityArr['description']) ? $cityArr['description'] : setting('seo_description');
 $titleSuffix = $cityArr['title_suffix'] ?? '';
@@ -53,7 +54,7 @@ $contactUrl  = 'index.php?act=city';
 
 /* ---------- 首页 ---------- */
 if ($act === 'home') {
-    $title = $siteTitle . $suffix;
+    $title = $sitePageTitle . $suffix;
     $pros  = DB::all('SELECT * FROM products WHERE status=1 AND recommend=1 AND site_id=? ORDER BY id DESC LIMIT 4', [$sid]);
     $news  = DB::all('SELECT * FROM articles WHERE status=1 AND site_id=? ORDER BY id DESC LIMIT 3', [$sid]);
     /* 模板中心可视化编辑器：实时预览（仅本次渲染覆盖，不落库） */
@@ -594,7 +595,7 @@ if ($act === 'city_home') {
 
 /* ---------- 城市分站 ---------- */
 if ($act === 'city') {
-    $title = $siteTitle . ' - 城市分站' . ($city ? ' · ' . $city['city'] : '');
+    $title = $sitePageTitle . ' - 城市分站' . ($city ? ' · ' . $city['city'] : '');
     render_tpl('city.php', [
         'title' => $title, 'nav' => $navAll, 'settings' => settings_all(), 'city' => $city,
         'cities' => DB::all('SELECT * FROM city_sites WHERE status=1 AND site_id=? ORDER BY sort ASC, id ASC', [$sid]),

@@ -43,6 +43,7 @@ function init_site(int $siteId, string $siteName): void
 {
     $defaults = [
         'site_name' => $siteName ?: '得应盯',
+        'site_title' => '',
         'phone' => '', 'email' => '', 'address' => '',
         'footer_text' => '帮中小老板把业务推出去，让客户主动找上门。',
         'hero_title' => '业务拓展实战帮手',

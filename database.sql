@@ -244,6 +244,7 @@ CREATE TABLE IF NOT EXISTS downloads (
 -- 初始配置（单站点官网）
 INSERT INTO settings (site_id,`key`,`value`) VALUES
 (0,'site_name','得应盯'),
+(0,'site_title',''),
 (0,'phone','18732237111'),
 (0,'email','hello@example.com'),
 (0,'address','保定市朝阳南大街519号得应盯'),

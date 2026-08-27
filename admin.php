@@ -1424,7 +1424,7 @@ if ($m === 'settings_save') {
     try {
         $keys = [
             // 全局
-            'site_name','phone','email','address','footer_text','techsupport_text','techsupport_url',
+            'site_name','site_title','phone','email','address','footer_text','techsupport_text','techsupport_url',
             'seo_keywords','seo_description',
             // 联系我们
             'contact_phone','contact_phone2','contact_wx_qr','contact_mp_qr',
