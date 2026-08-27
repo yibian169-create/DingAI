@@ -2105,7 +2105,14 @@ function ai_build_article(string $topic, int $words, string $tone, string $extra
     if ($raw === null) {
         return ['ok' => false, 'msg' => 'AI 写文调用失败（检查 API 地址/Key/网络）'];
     }
-    $c = ai_censor($raw);
+    // 必须先把 OpenAI 兼容响应解析为文本内容，再做敏感词过滤；否则会把整段 JSON 当正文入库
+    $resp = json_decode($raw, true);
+    if (!is_array($resp) || !isset($resp['choices'][0]['message']['content']) || $resp['choices'][0]['message']['content'] === '') {
+        $sample = is_string($raw) ? mb_substr($raw, 0, 300) : '';
+        return ['ok' => false, 'msg' => 'AI 响应格式异常（无 content），请检查模型与 API 地址。响应片段：' . $sample];
+    }
+    $aiText = trim($resp['choices'][0]['message']['content']);
+    $c = ai_censor($aiText);
     if ($c['block']) {
         return ['ok' => false, 'msg' => '命中高危敏感词，已拦截', 'hit' => $c['hit']];
     }
