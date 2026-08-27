@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif">
+  <defs>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="#f1f5f9"/>
+
+  <!-- 顶栏 -->
+  <rect x="0" y="0" width="1200" height="48" fill="url(#bar)"/>
+  <circle cx="22" cy="24" r="6" fill="#fff" opacity="0.9"/>
+  <text x="40" y="30" fill="#fff" font-size="16" font-weight="700">首页 DIY · 可视化编辑</text>
+  <rect x="1010" y="12" width="90" height="26" rx="13" fill="#22d3ee"/>
+  <text x="1055" y="29" fill="#0b1220" font-size="13" font-weight="700" text-anchor="middle">保存发布</text>
+
+  <!-- 左侧模块库 -->
+  <rect x="24" y="72" width="250" height="324" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="44" y="100" fill="#0f172a" font-size="15" font-weight="700">模块库（拖拽添加）</text>
+  <g font-size="13" font-weight="600" fill="#334155">
+    <rect x="44" y="116" width="210" height="34" rx="8" fill="#eef2ff"/><text x="58" y="138">🏠  首页主视觉 Hero</text>
+    <rect x="44" y="158" width="210" height="34" rx="8" fill="#f0fdf4"/><text x="58" y="180">🧩  应用场景 Scenario</text>
+    <rect x="44" y="200" width="210" height="34" rx="8" fill="#ecfeff"/><text x="58" y="222">📊  数据展示 Stats</text>
+    <rect x="44" y="242" width="210" height="34" rx="8" fill="#fef3c7"/><text x="58" y="264">💡  关于我们 About</text>
+    <rect x="44" y="284" width="210" height="34" rx="8" fill="#faf5ff"/><text x="58" y="306">🔄  流程 Workflow</text>
+    <rect x="44" y="326" width="210" height="34" rx="8" fill="#fff1f2"/><text x="58" y="348">📞  联系我们 Contact</text>
+  </g>
+
+  <!-- 中间实时预览 -->
+  <rect x="294" y="72" width="560" height="324" rx="14" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"/>
+  <text x="314" y="100" fill="#0f172a" font-size="14" font-weight="700">实时预览</text>
+  <g transform="translate(314,116)">
+    <rect x="0" y="0" width="520" height="44" rx="8" fill="#1e293b"/>
+    <rect x="16" y="16" width="90" height="12" rx="6" fill="#a5b4fc"/>
+    <rect x="430" y="16" width="70" height="12" rx="6" fill="#475569"/>
+    <rect x="0" y="56" width="520" height="60" rx="8" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="14" y="92" fill="#4f46e5" font-size="13" font-weight="700">首页主视觉 Hero（可编辑标题/副标题）</text>
+    <rect x="0" y="124" width="166" height="40" rx="8" fill="#ecfeff" stroke="#a5f3fc"/>
+    <rect x="177" y="124" width="166" height="40" rx="8" fill="#f0fdf4" stroke="#bbf7d0"/>
+    <rect x="354" y="124" width="166" height="40" rx="8" fill="#fef3c7" stroke="#fde68a"/>
+    <rect x="0" y="172" width="520" height="48" rx="8" fill="#faf5ff" stroke="#e9d5ff"/>
+    <rect x="14" y="196" width="220" height="10" rx="5" fill="#c4b5fd"/>
+    <rect x="0" y="228" width="520" height="40" rx="8" fill="#fff1f2" stroke="#fecdd3"/>
+    <text x="14" y="253" fill="#e11d48" font-size="12" font-weight="600">联系我们模块（显隐可切换）</text>
+    <rect x="0" y="276" width="90" height="26" rx="13" fill="url(#bar)"/>
+  </g>
+
+  <!-- 右侧属性 -->
+  <rect x="874" y="72" width="302" height="324" rx="14" fill="#ffffff" stroke="#e2e8f0"/>
+  <text x="894" y="100" fill="#0f172a" font-size="15" font-weight="700">模块属性</text>
+  <g font-size="12" fill="#64748b">
+    <text x="894" y="128">标题</text>
+    <rect x="894" y="138" width="262" height="30" rx="7" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="904" y="158" fill="#0f172a">首页主视觉 Hero</text>
+    <text x="894" y="190">副标题</text>
+    <rect x="894" y="200" width="262" height="30" rx="7" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="904" y="220" fill="#0f172a">专业企业官网一键搭建</text>
+    <text x="894" y="252">显示该模块</text>
+    <rect x="1120" y="240" width="36" height="20" rx="10" fill="#22c55e"/>
+    <circle cx="1150" cy="250" r="8" fill="#fff"/>
+    <text x="894" y="296">排序</text>
+    <rect x="894" y="306" width="40" height="28" rx="6" fill="#eef2ff"/><text x="914" y="325" fill="#4f46e5" font-weight="700" text-anchor="middle">1</text>
+    <rect x="940" y="306" width="40" height="28" rx="6" fill="#f8fafc" stroke="#e2e8f0"/><text x="960" y="325" fill="#94a3b8" text-anchor="middle">2</text>
+    <rect x="986" y="306" width="40" height="28" rx="6" fill="#f8fafc" stroke="#e2e8f0"/><text x="1006" y="325" fill="#94a3b8" text-anchor="middle">3</text>
+  </g>
+</svg>
